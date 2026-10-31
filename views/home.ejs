@@ -1,0 +1,67 @@
+<%- include("partials/header", { title }) %>
+<section class="hero">
+  <div class="hero-overlay"></div>
+  <div class="container hero-content">
+    <p class="eyebrow eyebrow-light">NAIROBI CATERING · KENYAN FLAVOURS · EVENT CARE</p>
+    <h1>Your occasion,<br><em>beautifully served.</em></h1>
+    <p class="hero-copy">From weddings and dowry ceremonies to corporate functions and family celebrations, Nanny Events & Caterers brings traditional Kenyan food and thoughtful event coordination to your occasion.</p>
+    <div class="hero-actions"><a class="btn btn-gold" href="/book">Plan your event <span>↗</span></a><a class="btn btn-outline-light" href="/services">Explore our services</a></div>
+    <div class="hero-note"><span class="hero-dot"></span> Serving Nairobi and surrounding areas · Enquire for availability</div>
+  </div>
+</section>
+<section class="trust-strip"><div class="container trust-items"><span>WEDDINGS & DOWRY CEREMONIES</span><span>•</span><span>CORPORATE CATERING</span><span>•</span><span>TRADITIONAL KENYAN MENUS</span><span>•</span><span>HOSPITALITY SERVICES</span></div></section>
+<section class="section section-warm">
+  <div class="container">
+    <div class="section-heading"><div><p class="eyebrow">WHAT WE DO</p><h2>Kenyan favourites, made for sharing.</h2></div><a class="text-link" href="/services">View all services ↗</a></div>
+    <div class="service-grid">
+      <% services.forEach((service, index) => { %>
+        <article class="service-card">
+          <a class="service-image" href="/services"><img src="<%= service.image || '/images/kenyan-food-spread.jpg' %>" alt="<%= service.name %>" loading="lazy"><span class="image-number">0<%= index + 1 %></span></a>
+          <div class="service-card-body"><p class="card-category"><%= service.category %></p><h3><%= service.name %></h3><p><%= service.description %></p><div class="card-bottom"><strong><%= service.quoteOnly || !service.price ? "Request a quote" : currency(service.price) %> <small><%= service.quoteOnly || !service.price ? "· tailored to your event" : service.unit %></small></strong><a href="/order/<%= service._id %>" aria-label="Order <%= service.name %>">↗</a></div></div>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<section class="section protocol-section" aria-labelledby="protocol-heading">
+  <div class="container protocol-layout">
+    <a class="protocol-poster" href="/images/nanny-protocol-events-team.jpeg" target="_blank" rel="noopener" aria-label="View the full Nanny Protocol and Events Team poster (opens in a new tab)">
+      <img src="/images/nanny-protocol-events-team.jpeg" alt="Nanny Protocol and Events Team services poster featuring the team, event setups and contact numbers 0702 952 266 and 0723 548 397" width="1024" height="1536" loading="lazy">
+      <span>Tap to view the full-size poster &#8599;</span>
+    </a>
+    <div class="split-copy">
+      <p class="eyebrow">PROTOCOL &amp; EVENT SUPPORT</p>
+      <h2 id="protocol-heading">Your event.<br><em>Our priority.</em></h2>
+      <p>Give every guest a warm welcome. Our protocol and events team helps coordinate the details, from arrival and seating to catering and the flow of your day.</p>
+      <ul class="check-list">
+        <li>Guest reception and registration</li>
+        <li>VIP and guest-of-honour protocol</li>
+        <li>Seating arrangements and ushering</li>
+        <li>Event coordination and time management</li>
+        <li>Catering coordination</li>
+        <li>Guest welfare and general support</li>
+      </ul>
+      <a class="btn btn-dark" href="/book">Enquire about our protocol team <span>&#8599;</span></a>
+    </div>
+  </div>
+</section>
+<section class="section">
+  <div class="container split-section">
+    <div class="split-photo"><img src="/images/elegant-event-tables.jpg" alt="Elegant event dining setup" loading="lazy"><div class="photo-caption"><strong>Your event, beautifully handled.</strong><span>From first enquiry to final plate.</span></div></div>
+    <div class="split-copy"><p class="eyebrow">YOUR OCCASION, OUR CARE</p><h2>More than catering.<br><em>We help bring it all together.</em></h2><p>Tell Nancy and the team what you are planning. Request a custom menu, catering quotation or event coordination for your celebration.</p><ul class="check-list"><li>Personalised catering quotations</li><li>Traditional Kenyan dishes and custom menus</li><li>Reliable planning and clear communication</li><li>Food delivery for teams and gatherings</li></ul><a class="btn btn-dark" href="/book">Start planning <span>↗</span></a> <a class="text-link" href="https://wa.me/254723548397?text=Hello%20Nanny%20Events%20%26%20Caterers%2C%20I%27d%20like%20a%20catering%20quotation." target="_blank" rel="noopener">WhatsApp us ↗</a></div>
+  </div>
+</section>
+<%- include("partials/event-gallery") %>
+<section class="section section-warm nanny-gallery-section">
+  <div class="container">
+    <div class="section-heading"><div><p class="eyebrow">FROM OUR EVENTS</p><h2>A taste of Nanny's work.</h2><p class="gallery-intro">Photos from our catering service, food preparation, menus and event setups.</p></div><a class="text-link" href="https://www.facebook.com/NannyCaterersServices/" target="_blank" rel="noopener">More on Facebook ↗</a></div>
+    <div class="nanny-gallery">
+      <% const galleryPhotos = [
+        ["buffet-team.jpg", "Nanny catering team serving a buffet"], ["elegant-event-tables.jpg", "Elegant event dining setup"], ["kienyeji-chicken.jpg", "Kienyeji chicken prepared for an event"], ["pilau-rice.jpg", "Pilau rice for a Kenyan menu"], ["kenyan-food-spread.jpg", "Traditional Kenyan food spread"], ["event-banquet.jpg", "Event venue prepared for guests"], ["catering-team-buffet.jpg", "Catering team and buffet service"], ["fresh-vegetables.jpg", "Fresh vegetable accompaniments"], ["spiced-rice.jpg", "Spiced rice prepared for catering"], ["fresh-tomato-salad.jpg", "Fresh tomato salad"], ["outdoor-event-catering.jpg", "Outdoor event catering setup"], ["refreshments.jpg", "Refreshments for guests"], ["roast-potatoes.jpg", "Potato side dish"], ["professional-food-service.jpg", "Professional food service"], ["nanny-event-team.jpg", "Nanny team at an event"], ["catering-service-team.jpg", "Catering service team"], ["event-buffet-service.jpg", "Buffet service at an event"], ["buffet-spread.jpg", "Catering buffet spread"], ["kenyan-bean-salad.jpg", "Kenyan-style salad"], ["refreshment-service.jpg", "Refreshment service"], ["chef-preparing-food.jpg", "Chef preparing food"], ["nanny-catering-team.jpg", "Nanny team with catered dishes"], ["catering-team.jpg", "Event catering team"], ["buffet-food.jpg", "Prepared buffet dishes"], ["green-soup.jpg", "Traditional green soup"]
+      ]; %>
+      <% galleryPhotos.forEach(([file, caption]) => { %><figure class="nanny-gallery-item"><img src="/images/<%= file %>" alt="<%= caption %>" loading="lazy"><figcaption><%= caption %></figcaption></figure><% }) %>
+    </div>
+  </div>
+</section>
+<section class="cta-band"><div class="container cta-inner"><div><p class="eyebrow eyebrow-light">LET'S MAKE IT SPECIAL</p><h2>Have an occasion in mind?</h2><p>Share your date, guest count and vision. We'll help you take the next step.</p></div><a class="btn btn-gold" href="/book">Request a quotation ↗</a></div></section>
+<%- include("partials/footer") %>

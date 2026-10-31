@@ -1,0 +1,7 @@
+<div class="record-notes">
+  <p>Admin alerts: Email — <%= record.adminNotifications?.email || 'Not attempted' %> · WhatsApp — <%= record.adminNotifications?.whatsapp || 'Not attempted' %>.</p>
+  <% if (record.adminNotifications?.attemptedAt) { %><p>Last attempt: <%= new Date(record.adminNotifications.attemptedAt).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' }) %></p><% } %>
+  <% if (record.adminNotifications?.email !== 'Accepted' || record.adminNotifications?.whatsapp !== 'Accepted') { %>
+    <form method="post" action="/admin/notifications/<%= kind %>/<%= record._id %>/retry"><button class="small-btn" type="submit">Retry admin alerts</button></form>
+  <% } %>
+</div>
