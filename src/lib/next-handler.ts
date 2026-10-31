@@ -5,6 +5,8 @@ import { connectDatabase } from "./db";
 import { getSession } from "./session";
 import { bookingStatuses } from "./constants";
 import { createPayments } from "./payments";
+import { dependencies } from "./controllers";
+import { userRole } from "./admin-access";
 import type { RequestContext, ResponseContext } from "./router";
 import type { PageData, ViewName } from "./types";
 
@@ -96,6 +98,13 @@ export async function dispatch(
   };
   try {
     if (route && !outcome.body) {
+      if (sessionContext.user) {
+        await connectDatabase();
+        const user = await dependencies.db.user.findUnique({ where: { id: sessionContext.user.id } });
+        sessionContext.user = user?.emailVerifiedAt
+          ? { id: user.id, name: user.name, email: user.email, role: userRole(user) }
+          : undefined;
+      }
       const accessDenied =
         (pathname.startsWith("/admin") &&
           pathname !== "/admin/login" &&
@@ -109,6 +118,7 @@ export async function dispatch(
           "/book",
           "/login",
           "/register",
+          "/verify-email",
           "/admin/login",
           "/logout",
           "/health",
@@ -156,10 +166,10 @@ export async function dispatch(
     orders: [],
     inquiries: [],
     customers: 0,
+    users: [],
     stats: { bookingCount: 0, orderCount: 0, paidTotal: 0 },
     selectedCategory: "",
     mode: "login",
-    audience: "guest",
     paymentsConfigured: false,
     message: "",
     ...JSON.parse(JSON.stringify(outcome.data || {})),

@@ -1,4 +1,5 @@
-import { isEmail, type createBookingMailer } from "./booking-email";
+import { type createBookingMailer } from "./booking-email";
+import { adminEmails } from "./admin-access";
 import type {
   AdminNotifications,
   Environment,
@@ -29,11 +30,7 @@ export function createAdminNotifier({
   const configured = {
     email: Boolean(
       mailer.configured &&
-      isEmail(
-        env.ADMIN_NOTIFICATION_EMAIL ||
-          env.BOOKING_APPROVER_EMAIL ||
-          env.ADMIN_EMAIL,
-      ),
+      adminEmails(env).length,
     ),
     whatsapp: Boolean(
       /^AC[a-f0-9]{32}$/i.test(env.TWILIO_ACCOUNT_SID || "") &&

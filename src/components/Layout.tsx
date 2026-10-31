@@ -61,6 +61,7 @@ export function Layout({
               <>
                 <a href={currentUser.role === "admin" ? "/admin" : "/account"}>
                   {currentUser.role === "admin" ? "Admin" : "My Account"}
+                  {currentUser.name ? ` (${currentUser.name})` : ""}
                 </a>
                 <form
                   className="logout-form"

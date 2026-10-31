@@ -1,7 +1,25 @@
 import { type PageData } from "../lib/types";
 
 export default function Auth(data: PageData) {
-  const { services, bookings, orders, mode, audience } = data;
+  const { mode } = data;
+
+  if (mode === "verify") return (
+    <section className="section section-warm">
+      <div className="container auth-form-wrap">
+        <h1>Verify your email.</h1>
+        <p>Enter the six-digit code sent to your email. The code expires in 15 minutes.</p>
+        <form className="auth-form" method="post" action="/api/verify-email">
+          <label htmlFor="verify-email">Email address</label>
+          <input id="verify-email" name="email" type="email" defaultValue={data.verificationEmail} autoComplete="email" required maxLength={254} />
+          <label htmlFor="verify-code">Verification code</label>
+          <input id="verify-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required />
+          <button className="btn btn-dark" type="submit">Verify email</button>
+          <button className="small-btn" type="submit" formAction="/api/verify-email/resend" formNoValidate>Resend code</button>
+        </form>
+        <p>After verification, you will be taken to <a href="/login">sign in</a>.</p>
+      </div>
+    </section>
+  );
 
   return (
     <>
@@ -15,9 +33,7 @@ export default function Auth(data: PageData) {
               Great company.
             </h2>
             <p>
-              {audience === "admin"
-                ? "Sign in to review bookings, manage food orders and update services."
-                : "Plan an event, request catering or follow your orders."}
+              Plan an event, request catering or follow your orders.
             </p>
           </div>
         </div>
@@ -26,23 +42,17 @@ export default function Auth(data: PageData) {
             <p className="eyebrow">
               {mode === "register"
                 ? "JOIN NANNY EVENTS & CATERERS"
-                : audience === "admin"
-                  ? "ADMINISTRATOR ACCESS"
-                  : "WELCOME BACK"}
+                : "WELCOME BACK"}
             </p>
             <h1>
               {mode === "register"
                 ? "Create your account."
-                : audience === "admin"
-                  ? "Admin sign in."
-                  : "Sign in to continue."}
+                : "Sign in to continue."}
             </h1>
             <p className="muted">
               {mode === "register"
                 ? "Keep your event requests and orders together."
-                : audience === "admin"
-                  ? "Access the dashboard to check and manage customer orders."
-                  : "Your bookings and food orders are waiting."}
+                : "Sign in with your email. Your account role determines your access."}
             </p>
             <form
               id="auth-sign-in"
@@ -51,9 +61,7 @@ export default function Auth(data: PageData) {
               action={
                 mode === "register"
                   ? "/api/register"
-                  : audience === "admin"
-                    ? "/api/admin/login"
-                    : "/api/login"
+                  : "/api/login"
               }
             >
               {mode === "register" ? (
@@ -136,30 +144,6 @@ export default function Auth(data: PageData) {
                   className="auth-options"
                   aria-label="More ways to continue"
                 >
-                  {audience === "admin" ? (
-                    <>
-                      <div className="auth-option">
-                        <span>FOR THE TEAM</span>
-                        <strong>Admin sign in</strong>
-                        <small>
-                          Check and manage bookings, orders and services.
-                        </small>
-                      </div>
-                      <a className="auth-option" href="/login">
-                        <span>FOR CUSTOMERS</span>
-                        <strong>Guest account sign in</strong>
-                        <small>Review your bookings and food orders.</small>
-                      </a>
-                    </>
-                  ) : (
-                    <>
-                      <a className="auth-option" href="/admin/login">
-                        <span>FOR THE TEAM</span>
-                        <strong>Admin sign in</strong>
-                        <small>
-                          Check and manage bookings, orders and services.
-                        </small>
-                      </a>
                       <div className="auth-option">
                         <span>BOOKING WITHOUT AN ACCOUNT</span>
                         <strong>Continue as a guest</strong>
@@ -171,8 +155,6 @@ export default function Auth(data: PageData) {
                           <a href="/services">Browse food & services</a>
                         </span>
                       </div>
-                    </>
-                  )}
                 </div>
               </>
             ) : null}

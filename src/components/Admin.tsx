@@ -75,6 +75,29 @@ export default function Admin(data: PageData) {
             </div>
           </div>
           <div className="dashboard-heading top-gap">
+            <div><p className="eyebrow">ACCESS</p><h2>Manage user roles</h2></div>
+          </div>
+          <p>The configured admin emails have owner access. You can grant other verified users admin access here.</p>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Email</th><th>Verification</th><th>Role</th><th>Action</th></tr></thead>
+              <tbody>{data.users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.name}</td><td>{user.email}</td><td>{user.verified ? "Verified" : "Pending"}</td><td>{user.role}</td>
+                  <td>{user.primaryAdmin ? "Configured owner" : user.id === data.currentUser?.id ? "Your account" : (
+                    <form method="post" action={`/api/admin/users/${user.id}/role`}>
+                      <select name="role" defaultValue={user.role} aria-label={`Role for ${user.email}`}>
+                        <option value="customer">Customer</option>
+                        <option value="admin" disabled={!user.verified}>Admin</option>
+                      </select>{" "}
+                      <button className="small-btn" type="submit">Save role</button>
+                    </form>
+                  )}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <div className="dashboard-heading top-gap">
             <div>
               <p className="eyebrow">CATALOGUE</p>
               <h2>Manage services</h2>

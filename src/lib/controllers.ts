@@ -6,6 +6,7 @@ import { createBookingMailer, isEmail } from "./booking-email";
 import { createAdminNotifier } from "./admin-notifications";
 import { createPayments } from "./payments";
 import { bookingStatuses } from "./constants";
+import { adminEmails, userRole } from "./admin-access";
 import { Router, type Handler, type RequestContext } from "./router";
 
 export const dependencies = { db: prisma };
@@ -26,6 +27,9 @@ const orderStatuses = [
 const noPaymentReference: Prisma.OrderWhereInput = {
   OR: [{ paymentReference: null }, { paymentReference: { isSet: false } }],
 };
+const unverifiedUser: Prisma.UserWhereInput = {
+  OR: [{ emailVerifiedAt: null }, { emailVerifiedAt: { isSet: false } }],
+};
 const today = () =>
   new Date(
     new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }) +
@@ -41,13 +45,46 @@ const requireAuth: Handler = (req, res, next) => {
   }
   return next();
 };
-const requireAdmin: Handler = (req, res, next) => {
-  if (req.session.user?.role !== "admin") {
+const requireAdmin: Handler = async (req, res, next) => {
+  const user = req.session.user ? await dependencies.db.user.findUnique({ where: { id: req.session.user.id } }) : null;
+  if (!user?.emailVerifiedAt || userRole(user) !== "admin") {
     flash(req, "warning", "Administrator access is required.");
-    return res.redirect("/admin/login");
+    return res.redirect("/login");
   }
+  req.session.user = { id: user.id, name: user.name, email: user.email, role: "admin" };
   return next();
 };
+
+async function sendVerification(user: { id: string; email: string }) {
+  const code = crypto.randomInt(100000, 1000000).toString();
+  const now = new Date();
+  const claimed = await dependencies.db.user.updateMany({
+    where: { id: user.id, AND: [unverifiedUser, { OR: [
+      { verificationSentAt: null }, { verificationSentAt: { isSet: false } },
+      { verificationSentAt: { lte: new Date(now.getTime() - 60000) } },
+    ] }] },
+    data: { verificationCodeHash: await bcrypt.hash(code, 10), verificationExpiresAt: new Date(now.getTime() + 15 * 60000), verificationSentAt: now, verificationAttempts: 0 },
+  });
+  if (!claimed.count) return false;
+  try {
+    await bookingMailer.sendVerification(user.email, code);
+  } catch {
+    // Allow an immediate retry after a provider failure.
+    await dependencies.db.user.updateMany({ where: { id: user.id, verificationSentAt: now }, data: { verificationSentAt: null, verificationCodeHash: null, verificationExpiresAt: null } });
+    throw new Error("Verification delivery failed");
+  }
+  return true;
+}
+
+const verificationPath = (email: string) => "/verify-email?email=" + encodeURIComponent(email);
+async function requestVerification(req: RequestContext, user: { id: string; email: string }) {
+  try {
+    const sent = await sendVerification(user);
+    flash(req, sent ? "success" : "warning", sent ? "A verification code has been sent to your email. It expires in 15 minutes." : "Please wait 60 seconds before requesting another code.");
+  } catch {
+    flash(req, "danger", "We could not send your verification code. Please try resending it.");
+  }
+}
 
 app.get("/", async (_req, res) => {
   const services = await dependencies.db.service.findMany({
@@ -144,36 +181,51 @@ app.post("/register", async (req, res) => {
     return res.redirect("/register");
   }
   if (await dependencies.db.user.findUnique({ where: { email } })) {
-    flash(req, "danger", "An account with that email already exists.");
+    flash(req, "danger", "An account with that email already exists. Sign in to continue or receive a verification code.");
     return res.redirect("/register");
   }
   const user = await dependencies.db.user.create({
-    data: { name, email, phone, passwordHash: await bcrypt.hash(password, 12) },
+    data: { name, email, phone, role: adminEmails().includes(email) ? "admin" : "customer", passwordHash: await bcrypt.hash(password, 12) },
   });
-  req.session.regenerate(() => {
-    req.session.user = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    };
-  });
-  flash(req, "success", "Welcome! Your account is ready.");
-  res.redirect("/account");
+  req.session.regenerate(() => {});
+  await requestVerification(req, user);
+  res.redirect(verificationPath(email));
+});
+app.get("/verify-email", (req, res) => res.render("auth", { title: "Verify your email", mode: "verify", verificationEmail: isEmail(req.query.email) ? req.query.email : "" }));
+app.post("/verify-email/resend", async (req, res) => {
+  const email = (req.body.email || "").trim().toLowerCase();
+  const user = isEmail(email) ? await dependencies.db.user.findUnique({ where: { email } }) : null;
+  if (user && !user.emailVerifiedAt) await requestVerification(req, user);
+  else flash(req, "success", "If this account needs verification, a code can be sent. Verified accounts can sign in.");
+  res.redirect(verificationPath(email));
+});
+app.post("/verify-email", async (req, res) => {
+  const email = (req.body.email || "").trim().toLowerCase();
+  const code = (req.body.code || "").trim();
+  const user = isEmail(email) ? await dependencies.db.user.findUnique({ where: { email } }) : null;
+  if (!user || user.emailVerifiedAt || !user.verificationCodeHash || !user.verificationExpiresAt || user.verificationExpiresAt <= new Date() || user.verificationAttempts >= 5 || !/^\d{6}$/.test(code)) {
+    flash(req, "danger", "Invalid or expired code. Request a new code if needed.");
+    return res.redirect(verificationPath(email));
+  }
+  const attempt = await dependencies.db.user.updateMany({ where: { ...unverifiedUser, id: user.id, verificationCodeHash: user.verificationCodeHash, verificationAttempts: { lt: 5 } }, data: { verificationAttempts: { increment: 1 } } });
+  if (!attempt.count || !(await bcrypt.compare(code, user.verificationCodeHash))) {
+    flash(req, "danger", "Invalid code. After five attempts, request a new code.");
+    return res.redirect(verificationPath(email));
+  }
+  const verified = await dependencies.db.user.updateMany({ where: { ...unverifiedUser, id: user.id, verificationCodeHash: user.verificationCodeHash, verificationExpiresAt: { gt: new Date() } }, data: { emailVerifiedAt: new Date(), verificationCodeHash: null, verificationExpiresAt: null, verificationAttempts: 0 } });
+  if (!verified.count) {
+    flash(req, "danger", "This code is no longer valid. Please try again.");
+    return res.redirect(verificationPath(email));
+  }
+  req.session.regenerate(() => {});
+  flash(req, "success", "Email verified. Please sign in.");
+  res.redirect("/login");
 });
 app.get("/login", (_req, res) =>
-  res.render("auth", { title: "Sign In", mode: "login", audience: "guest" }),
+  res.render("auth", { title: "Sign In", mode: "login" }),
 );
-app.get("/admin/login", (_req, res) =>
-  res.render("auth", {
-    title: "Admin Sign In",
-    mode: "login",
-    audience: "admin",
-  }),
-);
-const handleLogin =
-  (role?: string): Handler =>
-  async (req, res) => {
+app.get("/admin/login", (_req, res) => res.redirect("/login"));
+const handleLogin: Handler = async (req, res) => {
     const email = (req.body.email || "").trim().toLowerCase(),
       password = req.body.password || "";
     const user = isEmail(email)
@@ -181,29 +233,26 @@ const handleLogin =
       : null;
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       flash(req, "danger", "Email or password was not recognised.");
-      return res.redirect(role === "admin" ? "/admin/login" : "/login");
+      return res.redirect("/login");
     }
-    if (role && user.role !== role) {
-      flash(
-        req,
-        "danger",
-        "This sign-in is for administrators. Use the guest sign-in instead.",
-      );
-      return res.redirect("/admin/login");
+    if (!user.emailVerifiedAt) {
+      await requestVerification(req, user);
+      return res.redirect(verificationPath(email));
     }
+    const effectiveRole = userRole(user);
     req.session.regenerate(() => {
       req.session.user = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: effectiveRole,
       };
     });
-    flash(req, "success", `Welcome back, ${user.name}.`);
-    res.redirect(user.role === "admin" ? "/admin" : "/account");
+    flash(req, "success", `Welcome back, ${user.name}. You are signed in as ${effectiveRole === "admin" ? "an administrator" : "a customer"}.`);
+    res.redirect("/");
   };
-app.post("/login", handleLogin());
-app.post("/admin/login", handleLogin("admin"));
+app.post("/login", handleLogin);
+app.post("/admin/login", handleLogin);
 app.post("/logout", (req, res) => {
   req.session.destroy(() => {});
   res.redirect("/");
@@ -523,6 +572,7 @@ app.get("/admin", requireAdmin, async (_req, res) => {
     orderCount,
     paid,
     inquiries,
+    users,
   ] = await Promise.all([
     dependencies.db.booking.findMany({
       include: { customer: { select: contactFields } },
@@ -546,6 +596,7 @@ app.get("/admin", requireAdmin, async (_req, res) => {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    dependencies.db.user.findMany({ select: { id: true, name: true, email: true, role: true, roleAssignedByAdmin: true, emailVerifiedAt: true }, orderBy: { createdAt: "desc" } }),
   ]);
   res.render("admin", {
     title: "Admin Dashboard",
@@ -554,8 +605,30 @@ app.get("/admin", requireAdmin, async (_req, res) => {
     services,
     customers,
     inquiries,
+    users: users.map((user) => ({ id: user.id, name: user.name, email: user.email, role: userRole(user), verified: Boolean(user.emailVerifiedAt), primaryAdmin: adminEmails().includes(user.email) })),
     stats: { bookingCount, orderCount, paidTotal: paid._sum.total || 0 },
   });
+});
+
+app.post("/admin/users/:id/role", requireAdmin, async (req, res) => {
+  if (!isObjectId(req.params.id) || !["admin", "customer"].includes(req.body.role)) return res.sendStatus(400);
+  const user = await dependencies.db.user.findUnique({ where: { id: req.params.id } });
+  if (!user) return res.sendStatus(404);
+  if (adminEmails().includes(user.email)) {
+    flash(req, "warning", "The configured owner roles are managed in ADMIN_EMAILS.");
+    return res.redirect("/admin");
+  }
+  if (user.id === req.session.user!.id) {
+    flash(req, "warning", "You cannot change your own role.");
+    return res.redirect("/admin");
+  }
+  if (req.body.role === "admin" && !user.emailVerifiedAt) {
+    flash(req, "warning", "The user must verify their email before becoming an administrator.");
+    return res.redirect("/admin");
+  }
+  await dependencies.db.user.update({ where: { id: user.id }, data: { role: req.body.role, roleAssignedByAdmin: req.body.role === "admin" } });
+  flash(req, "success", "User role updated.");
+  res.redirect("/admin");
 });
 app.post(
   "/admin/notifications/:kind/:id/retry",

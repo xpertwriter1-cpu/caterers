@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Environment, NotificationRecord } from "./types";
+import { adminEmails } from "./admin-access";
 
 export function isEmail(value: unknown): value is string {
   return (
@@ -10,6 +11,14 @@ export function isEmail(value: unknown): value is string {
 }
 
 export function createBookingMailer(env: Environment = process.env) {
+  env = {
+    ...env,
+    SMTP_HOST: env.SMTP_HOST || env.MAIL_HOST,
+    SMTP_PORT: env.SMTP_PORT || env.MAIL_PORT,
+    SMTP_USER: env.SMTP_USER || env.MAIL_USERNAME,
+    SMTP_PASS: env.SMTP_PASS || env.MAIL_PASSWORD,
+    SMTP_FROM: env.SMTP_FROM || env.MAIL_FROM_ADDRESS,
+  };
   const configured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
   const port = Number(env.SMTP_PORT || 465);
   const transport = configured
@@ -28,19 +37,26 @@ export function createBookingMailer(env: Environment = process.env) {
     : null;
   return {
     configured,
+    async sendVerification(recipient: string, code: string) {
+      if (!transport || !isEmail(recipient)) throw new Error("Verification email is not configured.");
+      const result = await transport.sendMail({
+        from: { name: "Nanny Events & Caterers", address: env.SMTP_FROM || env.SMTP_USER },
+        to: { address: recipient },
+        subject: "Verify your Nanny Events & Caterers account",
+        text: `Your email verification code is ${code}.\n\nIt expires in 15 minutes. Enter it on the website to verify your account, then sign in.\nIf you did not request this, ignore this email.`,
+      });
+      if (!result.accepted?.length) throw new Error("Verification email was not accepted.");
+    },
     async notifyInquiry(inquiry: NotificationRecord) {
-      const recipient =
-        env.ADMIN_NOTIFICATION_EMAIL ||
-        env.BOOKING_APPROVER_EMAIL ||
-        env.ADMIN_EMAIL;
-      if (!transport || !isEmail(recipient))
+      const recipients = adminEmails(env);
+      if (!transport || !recipients.length)
         throw new Error("Admin email is not configured.");
       const result = await transport.sendMail({
         from: {
           name: "Nanny Events & Caterers",
           address: env.SMTP_FROM || env.SMTP_USER,
         },
-        to: { address: recipient },
+        to: recipients.map((address) => ({ address })),
         replyTo: { address: inquiry.requesterEmail || undefined },
         subject: `New contact enquiry #${inquiry.id.toString().slice(-6).toUpperCase()}`,
         text: [
@@ -57,21 +73,18 @@ export function createBookingMailer(env: Environment = process.env) {
           "Reply to this email to contact the requester.",
         ].join("\n"),
       });
-      if (!result.accepted?.length) throw new Error("Email was not accepted.");
+      if ((result.accepted?.length || 0) < recipients.length) throw new Error("Email was not accepted for every admin.");
     },
     async notifyOrder(order: NotificationRecord) {
-      const recipient =
-        env.ADMIN_NOTIFICATION_EMAIL ||
-        env.BOOKING_APPROVER_EMAIL ||
-        env.ADMIN_EMAIL;
-      if (!transport || !isEmail(recipient))
+      const recipients = adminEmails(env);
+      if (!transport || !recipients.length)
         throw new Error("Admin email is not configured.");
       const result = await transport.sendMail({
         from: {
           name: "Nanny Events & Caterers",
           address: env.SMTP_FROM || env.SMTP_USER,
         },
-        to: { address: recipient },
+        to: recipients.map((address) => ({ address })),
         replyTo: { address: order.requesterEmail || undefined },
         subject: `New order / quotation request #${order.id.toString().slice(-6).toUpperCase()}`,
         text: [
@@ -91,7 +104,7 @@ export function createBookingMailer(env: Environment = process.env) {
             : "Sign in to the website's admin dashboard.",
         ].join("\n"),
       });
-      if (!result.accepted?.length) throw new Error("Email was not accepted.");
+      if ((result.accepted?.length || 0) < recipients.length) throw new Error("Email was not accepted for every admin.");
     },
     async sendOrder(order: NotificationRecord, notificationRecipient?: string) {
       const recipient =
@@ -134,11 +147,8 @@ export function createBookingMailer(env: Environment = process.env) {
       if (!result.accepted?.length) throw new Error("Email was not accepted.");
     },
     async notifyApprover(booking: NotificationRecord) {
-      const recipient =
-        env.ADMIN_NOTIFICATION_EMAIL ||
-        env.BOOKING_APPROVER_EMAIL ||
-        env.ADMIN_EMAIL;
-      if (!transport || !isEmail(recipient))
+      const recipients = adminEmails(env);
+      if (!transport || !recipients.length)
         throw new Error("Approver email is not configured.");
       const reference = booking.id.toString().slice(-6).toUpperCase();
       const result = await transport.sendMail({
@@ -146,7 +156,7 @@ export function createBookingMailer(env: Environment = process.env) {
           name: "Nanny Events & Caterers",
           address: env.SMTP_FROM || env.SMTP_USER,
         },
-        to: { address: recipient },
+        to: recipients.map((address) => ({ address })),
         replyTo: { address: booking.requesterEmail || undefined },
         subject: `New booking request #${reference}`,
         text: [
@@ -163,7 +173,7 @@ export function createBookingMailer(env: Environment = process.env) {
           "Sign in to the website's admin dashboard to review and send a decision, or reply to this email to contact the requester.",
         ].join("\n"),
       });
-      if (!result.accepted?.length)
+      if ((result.accepted?.length || 0) < recipients.length)
         throw new Error("The email provider did not accept the notification.");
     },
     async send(booking: NotificationRecord, recipient: string) {

@@ -111,10 +111,11 @@ export interface PageData {
   order?: OrderView;
   inquiries: View<InquiryEntity>[];
   customers: number;
+  users: { id: string; name: string; email: string; role: string; verified: boolean; primaryAdmin: boolean }[];
+  verificationEmail?: string;
   stats: { bookingCount: number; orderCount: number; paidTotal: number };
   selectedCategory: string;
-  mode: "login" | "register";
-  audience: "admin" | "guest";
+  mode: "login" | "register" | "verify";
   paymentsConfigured: boolean;
   message: string;
 }
