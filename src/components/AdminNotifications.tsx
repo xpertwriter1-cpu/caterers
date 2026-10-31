@@ -8,7 +8,7 @@ export function AdminNotifications({
   kind,
 }: {
   record: {
-    _id: string;
+    id: string;
     adminNotifications?: {
       email?: string | null;
       whatsapp?: string | null;
@@ -35,7 +35,7 @@ export function AdminNotifications({
       {(status?.email !== "Accepted" || status?.whatsapp !== "Accepted") && (
         <form
           method="post"
-          action={`/api/admin/notifications/${kind}/${record._id}/retry`}
+          action={`/api/admin/notifications/${kind}/${record.id}/retry`}
         >
           <button className="small-btn" type="submit">
             Retry admin alerts

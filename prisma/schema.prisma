@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+type AdminNotification {
+  email             String?
+  whatsapp          String?
+  attemptedAt       DateTime?
+  whatsappMessageId String?
+}
+
+type OrderItem {
+  serviceId String? @map("service") @db.ObjectId
+  name      String?
+  quantity  Int?
+  unitPrice Float?
+}
+
+model User {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String    @unique(map: "email_1")
+  passwordHash String
+  role         String    @default("customer")
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[]
+  orders       Order[]
+
+  @@map("users")
+}
+
+model Service {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  category    String
+  description String
+  quoteOnly   Boolean  @default(true)
+  price       Float    @default(0)
+  unit        String   @default("per order")
+  image       String   @default("")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
+
+model Booking {
+  id                         String             @id @default(auto()) @map("_id") @db.ObjectId
+  customerId                 String?            @map("customer") @db.ObjectId
+  customer                   User?              @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requesterName              String?
+  requesterEmail             String?
+  type                       String
+  eventDate                  DateTime
+  guestCount                 Int
+  venue                      String
+  budget                     Float?
+  menuNeeds                  String?
+  notes                      String?
+  status                     String             @default("New")
+  approverNotificationStatus String             @default("Not sent")
+  approverComment            String?
+  proposedDate               DateTime?
+  reviewedAt                 DateTime?
+  emailStatus                String             @default("Not sent")
+  emailedAt                  DateTime?
+  quoteAmount                Float?
+  adminNotes                 String?
+  adminNotifications         AdminNotification?
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+
+  @@map("bookings")
+}
+
+model Order {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  customerId         String?            @map("customer") @db.ObjectId
+  customer           User?              @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requesterName      String?
+  requesterEmail     String?
+  phone              String?
+  // Existing sparse unique indexes are maintained by scripts/setup-database.mjs.
+  accessToken        String?
+  paymentReference   String?
+  quoted             Boolean            @default(false)
+  deliveryFee        Float              @default(0)
+  deliveryContact    String?
+  deliveryNotes      String?
+  paymentUrl         String?
+  paidAt             DateTime?
+  items              OrderItem[]
+  deliveryAddress    String
+  deliveryDate       DateTime?
+  notes              String?
+  total              Float
+  paymentMethod      String             @default("Pay on confirmation")
+  paymentStatus      String             @default("Pending")
+  status             String             @default("Received")
+  version            Int                @default(0) @map("__v")
+  adminNotifications AdminNotification?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("orders")
+}
+
+model Inquiry {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  requesterName      String
+  requesterEmail     String
+  subject            String?
+  message            String
+  adminNotifications AdminNotification?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("inquiries")
+}

@@ -114,7 +114,7 @@ export default function Home(data: PageData) {
                         </small>
                       </strong>
                       <a
-                        href={`/order/${service._id}`}
+                        href={`/order/${service.id}`}
                         aria-label={`Order ${service.name}`}
                       >
                         ↗

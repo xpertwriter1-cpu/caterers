@@ -1,13 +1,57 @@
-import { afterEach, test, mock } from "node:test";
+﻿import { afterEach, beforeEach, test, mock } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
-import { User, Booking, Order, Inquiry, Service } from "../src/lib/models";
-import { adminNotifier, bookingMailer } from "../src/lib/controllers";
+import { prisma, assertAtlasUrl } from "../src/lib/prisma";
+import {
+  adminNotifier,
+  bookingMailer,
+  dependencies,
+} from "../src/lib/controllers";
 import { run, admin, customer, id } from "./helpers";
 import type { NotificationKind, NotificationRecord } from "../src/lib/types";
 
+const unmocked = async () => {
+  throw Error("Unmocked database call");
+};
+const store = {
+  user: { findUnique: unmocked, create: unmocked },
+  service: {
+    findFirst: unmocked,
+    findUnique: unmocked,
+    create: unmocked,
+    update: unmocked,
+    findMany: unmocked,
+  },
+  booking: {
+    create: unmocked,
+    update: unmocked,
+    findUnique: unmocked,
+    findMany: unmocked,
+    count: unmocked,
+  },
+  order: {
+    create: unmocked,
+    update: unmocked,
+    updateMany: unmocked,
+    findUnique: unmocked,
+    findFirst: unmocked,
+    findMany: unmocked,
+    count: unmocked,
+    aggregate: unmocked,
+  },
+  inquiry: {
+    create: unmocked,
+    update: unmocked,
+    findUnique: unmocked,
+    findMany: unmocked,
+  },
+};
+function resetDatabase() {
+  mock.restoreAll();
+  mock.property(dependencies, "db", store as unknown as typeof prisma);
+}
+beforeEach(resetDatabase);
 afterEach(() => mock.restoreAll());
-
 test("admin and account routes require the correct authenticated role", async () => {
   for (const path of [
     "/admin",
@@ -16,20 +60,29 @@ test("admin and account routes require the correct authenticated role", async ()
     `/admin/bookings/${id}`,
     `/admin/orders/${id}`,
   ]) {
-    for (const user of [undefined, customer]) {
+    for (const user of [undefined, customer])
       assert.equal(
         (await run(path === "/admin" ? "GET" : "POST", path, {}, user))
           .redirect,
         "/admin/login",
       );
-    }
   }
   assert.equal((await run("GET", "/account")).redirect, "/login");
 });
-
-test("admin sign-in rejects customer accounts, rotates session and accepts administrators", async () => {
-  let user = { ...admin, _id: id, passwordHash: "hash" };
-  mock.method(User, "findOne", async () => user);
+test("Prisma connections require an Atlas SRV URL with a database", () => {
+  assert.doesNotThrow(() =>
+    assertAtlasUrl("mongodb+srv://user:password@cluster.mongodb.net/catering"),
+  );
+  for (const uri of [
+    "mongodb://localhost/catering",
+    "postgresql://localhost/db",
+    "mongodb+srv://user:password@cluster.mongodb.net/",
+  ])
+    assert.throws(() => assertAtlasUrl(uri));
+});
+test("admin sign-in rejects customers and accepts administrators", async () => {
+  let user = { ...admin, id, passwordHash: "hash" };
+  mock.method(store.user, "findUnique", async () => user);
   mock.method(bcrypt, "compare", async () => true);
   let result = await run("POST", "/admin/login", {
     email: admin.email,
@@ -50,21 +103,26 @@ test("admin sign-in rejects customer accounts, rotates session and accepts admin
     "/account",
   );
 });
-
-test("contact enquiries persist before email/WhatsApp attempts, including channel failures", async () => {
+test("enquiries persist before notifications, with independent failed channel status", async () => {
   for (const status of ["Accepted", "Failed", "Not configured"] as const) {
     let saved: Record<string, unknown> | undefined,
-      saves = 0;
-    mock.method(Inquiry, "create", async (data: Record<string, unknown>) => {
-      saved = {
-        ...data,
-        _id: id,
-        save: async () => {
-          saves++;
-        },
-      };
-      return saved;
-    });
+      updated: Record<string, unknown> | undefined;
+    mock.method(
+      store.inquiry,
+      "create",
+      async (args: { data: Record<string, unknown> }) => {
+        saved = { ...args.data, id };
+        return saved;
+      },
+    );
+    mock.method(
+      store.inquiry,
+      "update",
+      async (args: { data: Record<string, unknown> }) => {
+        updated = args.data;
+        return { ...saved, ...args.data };
+      },
+    );
     mock.method(
       adminNotifier,
       "notify",
@@ -81,16 +139,15 @@ test("contact enquiries persist before email/WhatsApp attempts, including channe
       message: "Please quote.",
     });
     assert.equal(saved?.requesterEmail, "client@example.com");
-    assert.equal(saves, 1);
+    assert.ok(updated?.adminNotifications);
     assert.equal(result.redirect, "/contact");
     assert.equal(result.req.session.flash?.type, "success");
-    mock.restoreAll();
+    resetDatabase();
   }
 });
-
-test("contact form rejects invalid and oversized submissions without storing or sending", async () => {
-  mock.method(Inquiry, "create", () =>
-    assert.fail("Invalid enquiry must not be saved"),
+test("invalid and oversized enquiries are never stored", async () => {
+  mock.method(store.inquiry, "create", () =>
+    assert.fail("Must not store invalid request"),
   );
   for (const bad of [
     { email: "bad" },
@@ -99,22 +156,38 @@ test("contact form rejects invalid and oversized submissions without storing or 
     { message: "x".repeat(3001) },
     { subject: "x".repeat(151) },
   ] as Record<string, string>[]) {
-    const result = await run("POST", "/contact", {
-      name: "Client",
-      email: "client@example.com",
-      message: "Help",
-      ...bad,
-    });
-    assert.equal(result.req.session.flash?.type, "danger");
+    assert.equal(
+      (
+        await run("POST", "/contact", {
+          name: "Client",
+          email: "client@example.com",
+          message: "Help",
+          ...bad,
+        })
+      ).req.session.flash?.type,
+      "danger",
+    );
   }
 });
-
-test("guest booking saves and alerts both channels without requiring an account", async () => {
-  let created: Record<string, unknown> | undefined;
-  mock.method(Booking, "create", async (data: Record<string, unknown>) => {
-    created = { ...data, _id: id, save: async () => {} };
-    return created;
-  });
+test("guest booking saves in Prisma and alerts the admin without requiring an account", async () => {
+  let created: Record<string, unknown> | undefined,
+    updated: Record<string, unknown> | undefined;
+  mock.method(
+    store.booking,
+    "create",
+    async (args: { data: Record<string, unknown> }) => {
+      created = { ...args.data, id };
+      return created;
+    },
+  );
+  mock.method(
+    store.booking,
+    "update",
+    async (args: { data: Record<string, unknown> }) => {
+      updated = args.data;
+      return { ...created, ...args.data };
+    },
+  );
   mock.method(adminNotifier, "notify", async (kind: NotificationKind) => {
     assert.equal(kind, "booking");
     return { email: "Failed", whatsapp: "Accepted" };
@@ -127,24 +200,27 @@ test("guest booking saves and alerts both channels without requiring an account"
     guestCount: "50",
     venue: "Nairobi",
   });
-  assert.equal(created?.customer, undefined);
-  assert.equal(created?.approverNotificationStatus, "Failed");
+  assert.equal(created?.customerId, undefined);
+  assert.equal(updated?.approverNotificationStatus, "Failed");
   assert.equal(result.redirect, "/book");
-  assert.equal(result.req.session.flash?.type, "success");
 });
-
-test("guest food request uses database prices, generates a private token and sends alerts", async () => {
+test("Prisma guest food requests use stored prices and generate private tokens", async () => {
   let created: Record<string, unknown> | undefined;
-  mock.method(Service, "findOne", async () => ({
-    _id: id,
+  mock.method(store.service, "findFirst", async () => ({
+    id,
     name: "Pilau",
     price: 200,
     quoteOnly: false,
   }));
-  mock.method(Order, "create", async (data: Record<string, unknown>) => {
-    created = { ...data, _id: id, save: async () => {} };
-    return created;
-  });
+  mock.method(
+    store.order,
+    "create",
+    async (args: { data: Record<string, unknown> }) => {
+      created = { ...args.data, id };
+      return created;
+    },
+  );
+  mock.method(store.order, "update", async () => ({}));
   mock.method(adminNotifier, "notify", async (kind: NotificationKind) => {
     assert.equal(kind, "order");
     return { email: "Accepted", whatsapp: "Not configured" };
@@ -162,7 +238,6 @@ test("guest food request uses database prices, generates a private token and sen
   assert.match(String(created?.accessToken), /^[a-f0-9]{64}$/);
   assert.equal(result.redirect, "/requests/" + created?.accessToken);
 });
-
 test("unpaid orders cannot be prepared/dispatched and admins cannot mark payment Paid", async () => {
   for (const status of [
     "Preparing",
@@ -171,67 +246,124 @@ test("unpaid orders cannot be prepared/dispatched and admins cannot mark payment
     "Delivered",
     "Confirmed",
   ]) {
-    let saves = 0;
-    const record = {
+    let updates = 0;
+    const order = {
+      id,
       status: "Received",
       paymentStatus: "Pending",
-      save: async () => {
-        saves++;
-      },
+      version: 0,
     };
-    mock.method(Order, "findById", () => ({ populate: async () => record }));
+    mock.method(store.order, "findUnique", async () => order);
+    mock.method(
+      store.order,
+      "updateMany",
+      async (args: { data: Record<string, unknown> }) => {
+        updates++;
+        assert.equal(args.data.paymentStatus, undefined);
+        return { count: 1 };
+      },
+    );
     await run(
       "POST",
       `/admin/orders/${id}`,
       { status, paymentStatus: "Paid" },
       admin,
     );
-    assert.equal(saves, status === "Confirmed" ? 1 : 0);
-    assert.equal(record.paymentStatus, "Pending");
-    mock.restoreAll();
+    assert.equal(updates, status === "Confirmed" ? 1 : 0);
+    assert.equal(order.paymentStatus, "Pending");
+    resetDatabase();
   }
 });
-
-test("checkout locks prevent administrators from changing an initiated quotation", async () => {
-  const record = {
+test("checkout locks prevent changes to initiated quotations", async () => {
+  let update: Record<string, unknown> | undefined;
+  mock.method(store.order, "findUnique", async () => ({
+    id,
     status: "Confirmed",
     paymentStatus: "Pending",
     paymentReference: "ref",
     total: 5000,
     deliveryFee: 500,
-    save: async () => {},
-  };
-  mock.method(Order, "findById", () => ({ populate: async () => record }));
+    version: 2,
+  }));
+  mock.method(
+    store.order,
+    "updateMany",
+    async (args: { data: Record<string, unknown> }) => {
+      update = args.data;
+      return { count: 1 };
+    },
+  );
   await run(
     "POST",
     `/admin/orders/${id}`,
     { status: "Confirmed", foodTotal: "1", deliveryFee: "0" },
     admin,
   );
-  assert.equal(record.total, 5000);
-  assert.equal(record.deliveryFee, 500);
+  assert.equal(update?.total, undefined);
+  assert.equal(update?.deliveryFee, undefined);
 });
-
-test("rescheduling requires a date and comment; failed requester emails preserve review", async () => {
-  let saves = 0;
+test("quotation updates use an atomic version and payment lock to reject concurrent checkout", async () => {
+  let where: Record<string, unknown> | undefined;
+  mock.method(store.order, "findUnique", async () => ({
+    id,
+    status: "Received",
+    paymentStatus: "Pending",
+    paymentReference: null,
+    version: 3,
+  }));
+  mock.method(
+    store.order,
+    "updateMany",
+    async (args: { where: Record<string, unknown> }) => {
+      where = args.where;
+      return { count: 0 };
+    },
+  );
+  mock.method(bookingMailer, "sendOrder", () =>
+    assert.fail("A stale quotation must not be emailed"),
+  );
+  const result = await run(
+    "POST",
+    `/admin/orders/${id}`,
+    {
+      status: "Confirmed",
+      foodTotal: "4000",
+      deliveryFee: "500",
+      emailOrder: "on",
+    },
+    admin,
+  );
+  assert.equal(where?.version, 3);
+  assert.ok(where?.OR);
+  assert.deepEqual(where?.paymentStatus, { not: "Paid" });
+  assert.equal(result.req.session.flash?.type, "warning");
+});
+test("booking reviews validate rescheduling and preserve comments when email fails", async () => {
+  let updates = 0;
   const record = {
-    _id: id,
+    id,
     customer: { email: "legacy@example.com" },
     status: "New",
     approverComment: "",
     emailStatus: "Not sent",
-    save: async () => {
-      saves++;
-    },
   };
-  mock.method(Booking, "findById", () => ({ populate: async () => record }));
+  mock.method(store.booking, "findUnique", async () => record);
+  mock.method(
+    store.booking,
+    "update",
+    async (args: { data: Record<string, unknown> }) => {
+      updates++;
+      Object.assign(record, args.data);
+      return record;
+    },
+  );
   await run(
     "POST",
     `/admin/bookings/${id}`,
     { status: "Reschedule Requested" },
     admin,
   );
-  assert.equal(saves, 0);
+  assert.equal(updates, 0);
   await run(
     "POST",
     `/admin/bookings/${id}`,
@@ -243,14 +375,13 @@ test("rescheduling requires a date and comment; failed requester emails preserve
     admin,
   );
   assert.equal(record.status, "Reschedule Requested");
-  assert.equal(saves, 1);
   mock.property(bookingMailer, "configured", true);
   mock.method(
     bookingMailer,
     "send",
-    async (_booking: NotificationRecord, recipient: string) => {
+    async (_record: NotificationRecord, recipient: string) => {
       assert.equal(recipient, "legacy@example.com");
-      throw Error("SMTP unavailable");
+      throw Error("SMTP down");
     },
   );
   await run(
@@ -262,16 +393,14 @@ test("rescheduling requires a date and comment; failed requester emails preserve
   assert.equal(record.approverComment, "Welcome");
   assert.equal(record.emailStatus, "Failed");
 });
-
-test("authenticated admins retry enquiries; invalid ids and kinds return 404", async () => {
-  let saves = 0;
-  const record = {
-    _id: id,
-    save: async () => {
-      saves++;
-    },
-  };
-  mock.method(Inquiry, "findById", async () => record);
+test("admin retry persists statuses through Prisma and rejects invalid ids/kinds", async () => {
+  let updates = 0;
+  const record = { id };
+  mock.method(store.inquiry, "findUnique", async () => record);
+  mock.method(store.inquiry, "update", async () => {
+    updates++;
+    return record;
+  });
   mock.method(
     adminNotifier,
     "notify",
@@ -291,7 +420,7 @@ test("authenticated admins retry enquiries; invalid ids and kinds return 404", a
       .redirect,
     "/admin",
   );
-  assert.equal(saves, 1);
+  assert.equal(updates, 1);
   assert.equal(
     (await run("POST", `/admin/notifications/unknown/${id}/retry`, {}, admin))
       .status,
@@ -302,4 +431,13 @@ test("authenticated admins retry enquiries; invalid ids and kinds return 404", a
       .status,
     404,
   );
+});
+test("customer page props exclude internal booking notes", async () => {
+  mock.method(store.booking, "findMany", async () => [
+    { id, adminNotes: "INTERNAL", approverComment: "Public comment" },
+  ]);
+  mock.method(store.order, "findMany", async () => []);
+  const result = await run("GET", "/account", {}, customer);
+  assert.ok(!JSON.stringify(result.data).includes("INTERNAL"));
+  assert.ok(JSON.stringify(result.data).includes("Public comment"));
 });

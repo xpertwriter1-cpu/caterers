@@ -58,7 +58,7 @@ export default function Services(data: PageData) {
             {services.map((service, index) => (
               <Fragment key={index}>
                 <article className="service-card">
-                  <a className="service-image" href={`/order/${service._id}`}>
+                  <a className="service-image" href={`/order/${service.id}`}>
                     <img
                       src={service.image || "/images/kenyan-food-spread.jpg"}
                       alt={service.name}
@@ -83,7 +83,7 @@ export default function Services(data: PageData) {
                             : service.unit}
                         </small>
                       </strong>
-                      <a href={`/order/${service._id}`}>Order / enquire ↗</a>
+                      <a href={`/order/${service.id}`}>Order / enquire ↗</a>
                     </div>
                   </div>
                 </article>

@@ -4,7 +4,6 @@ import type {
   OrderEntity,
   ServiceEntity,
 } from "./models";
-import type { Types } from "mongoose";
 
 export type Environment = Record<string, string | undefined>;
 export type NotificationKind = "booking" | "order" | "inquiry";
@@ -15,10 +14,10 @@ export interface AdminNotifications {
   whatsappMessageId?: string | null;
 }
 export interface NotificationRecord {
-  _id: { toString(): string };
+  id: { toString(): string };
   requesterName?: string | null;
   requesterEmail?: string | null;
-  customer?: { email?: string | null } | Types.ObjectId | null;
+  customer?: { email?: string | null } | null;
   subject?: string | null;
   message?: string | null;
   type?: string;
@@ -68,18 +67,19 @@ export interface SessionData {
 
 export type Serialized<T> = T extends Date
   ? string
-  : T extends Types.ObjectId
-    ? string
-    : T extends Array<infer U>
-      ? Serialized<U>[]
-      : T extends object
-        ? { [K in keyof T]: Serialized<T[K]> }
-        : T;
-type Contact = { name?: string; email?: string; phone?: string };
-export type BookingView = Omit<Serialized<BookingEntity>, "customer"> & {
+  : T extends Array<infer U>
+    ? Serialized<U>[]
+    : T extends object
+      ? { [K in keyof T]: Serialized<T[K]> }
+      : T;
+type View<T> = {
+  [K in keyof T as null extends T[K] ? never : K]: Serialized<T[K]>;
+} & { [K in keyof T as null extends T[K] ? K : never]?: Serialized<T[K]> };
+type Contact = { name?: string; email?: string; phone?: string | null };
+export type BookingView = Omit<View<BookingEntity>, "customer"> & {
   customer?: Contact | null;
 };
-export type OrderView = Omit<Serialized<OrderEntity>, "customer"> & {
+export type OrderView = Omit<View<OrderEntity>, "customer"> & {
   customer?: Contact | null;
 };
 export type ViewName =
@@ -104,12 +104,12 @@ export interface PageData {
   bookingStatuses: string[];
   emailConfigured: boolean;
   adminNotificationConfig: { email: boolean; whatsapp: boolean };
-  services: Serialized<ServiceEntity>[];
-  service?: Serialized<ServiceEntity>;
+  services: View<ServiceEntity>[];
+  service?: View<ServiceEntity>;
   bookings: BookingView[];
   orders: OrderView[];
   order?: OrderView;
-  inquiries: Serialized<InquiryEntity>[];
+  inquiries: View<InquiryEntity>[];
   customers: number;
   stats: { bookingCount: number; orderCount: number; paidTotal: number };
   selectedCategory: string;

@@ -163,7 +163,7 @@ export default function Account(data: PageData) {
                         <tr>
                           <td>
                             <strong>
-                              #{o._id.toString().slice(-6).toUpperCase()}
+                              #{o.id.toString().slice(-6).toUpperCase()}
                             </strong>
                             <small>
                               {o.items

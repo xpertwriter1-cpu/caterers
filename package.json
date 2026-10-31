@@ -4,10 +4,16 @@
   "description": "Nanny Events & Caterers - Next.js and TypeScript",
   "scripts": {
     "dev": "node scripts/start-next.mjs dev",
-    "build": "next build --webpack",
+    "build": "prisma generate && next build --webpack",
     "start": "node scripts/start-next.mjs start",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test .test-build/tests/*.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test .test-build/tests/*.test.js",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "db:check": "node scripts/check-database.mjs",
+    "db:setup": "node scripts/setup-database.mjs",
+    "db:seed": "tsc -p tsconfig.seed.json && node scripts/seed-database.mjs"
   },
   "engines": {
     "node": ">=20.9"
@@ -15,11 +21,12 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "iron-session": "^8.0.4",
-    "mongoose": "^8.9.5",
     "next": "^16.4.3",
     "nodemailer": "^10.2.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "@prisma/client": "6.19.3",
+    "@next/env": "16.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -27,6 +34,8 @@
     "@types/nodemailer": "^7.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "typescript": "^5.9.0"
-  }
+    "typescript": "^5.9.0",
+    "prisma": "6.19.3"
+  },
+  "packageManager": "pnpm@12.11.2"
 }

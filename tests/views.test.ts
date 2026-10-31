@@ -8,7 +8,7 @@ import { page, customer, id } from "./helpers";
 import type { PageData } from "../src/lib/types";
 
 const service: NonNullable<PageData["service"]> = {
-  _id: id,
+  id: id,
   name: "Pilau",
   price: 0,
   quoteOnly: true,
@@ -21,11 +21,11 @@ const service: NonNullable<PageData["service"]> = {
   updatedAt: "2026-10-31",
 };
 const order: NonNullable<PageData["order"]> = {
-  _id: id,
+  id: id,
   requesterName: "Guest",
   requesterEmail: "guest@example.com",
   phone: "0723548397",
-  items: [{ name: "Pilau", quantity: 20 }],
+  items: [{ name: "Pilau", quantity: 20, serviceId: null, unitPrice: null }],
   total: 5000,
   deliveryFee: 500,
   quoted: true,
@@ -33,6 +33,7 @@ const order: NonNullable<PageData["order"]> = {
   accessToken: "a".repeat(64),
   status: "Confirmed",
   paymentStatus: "Pending",
+  version: 0,
   deliveryAddress: "Nairobi",
   createdAt: "2026-10-31",
   updatedAt: "2026-10-31",
@@ -94,13 +95,18 @@ test("admin enquiry messages escape markup and offer scoped notification retries
       view: "admin",
       inquiries: [
         {
-          _id: id,
+          id: id,
           requesterName: "Guest",
           requesterEmail: "guest@example.com",
           message: '<script>alert("test")</script>',
           createdAt: "2026-10-31",
           updatedAt: "2026-10-31",
-          adminNotifications: { email: "Failed", whatsapp: "Accepted" },
+          adminNotifications: {
+            email: "Failed",
+            whatsapp: "Accepted",
+            attemptedAt: null,
+            whatsappMessageId: null,
+          },
         },
       ],
     }),

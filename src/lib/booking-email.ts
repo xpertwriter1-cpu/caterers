@@ -42,7 +42,7 @@ export function createBookingMailer(env: Environment = process.env) {
         },
         to: { address: recipient },
         replyTo: { address: inquiry.requesterEmail || undefined },
-        subject: `New contact enquiry #${inquiry._id.toString().slice(-6).toUpperCase()}`,
+        subject: `New contact enquiry #${inquiry.id.toString().slice(-6).toUpperCase()}`,
         text: [
           "A new contact enquiry needs your review.",
           `Requester: ${inquiry.requesterName}`,
@@ -73,7 +73,7 @@ export function createBookingMailer(env: Environment = process.env) {
         },
         to: { address: recipient },
         replyTo: { address: order.requesterEmail || undefined },
-        subject: `New order / quotation request #${order._id.toString().slice(-6).toUpperCase()}`,
+        subject: `New order / quotation request #${order.id.toString().slice(-6).toUpperCase()}`,
         text: [
           "A new food / catering request needs your review.",
           `Requester: ${order.requesterName}`,
@@ -114,7 +114,7 @@ export function createBookingMailer(env: Environment = process.env) {
         },
         to: { address: recipient },
         replyTo: env.SMTP_REPLY_TO || env.SMTP_USER,
-        subject: `Order #${order._id.toString().slice(-6).toUpperCase()}: ${order.status}`,
+        subject: `Order #${order.id.toString().slice(-6).toUpperCase()}: ${order.status}`,
         text: [
           "Your food / catering request has been updated.",
           `Status: ${order.status}`,
@@ -140,7 +140,7 @@ export function createBookingMailer(env: Environment = process.env) {
         env.ADMIN_EMAIL;
       if (!transport || !isEmail(recipient))
         throw new Error("Approver email is not configured.");
-      const reference = booking._id.toString().slice(-6).toUpperCase();
+      const reference = booking.id.toString().slice(-6).toUpperCase();
       const result = await transport.sendMail({
         from: {
           name: "Nanny Events & Caterers",
@@ -174,7 +174,7 @@ export function createBookingMailer(env: Environment = process.env) {
         new Date(value).toLocaleDateString("en-KE", {
           timeZone: "Africa/Nairobi",
         });
-      const reference = booking._id.toString().slice(-6).toUpperCase();
+      const reference = booking.id.toString().slice(-6).toUpperCase();
       const text = [
         `Your booking #${reference} has been reviewed.`,
         `Event: ${booking.type}`,

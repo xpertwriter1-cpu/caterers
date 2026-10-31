@@ -1,30 +1,9 @@
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { Service, User } from "./models";
+import { prisma, assertAtlasUrl } from "./prisma";
 
-type DatabaseCache = {
-  connection?: Promise<typeof mongoose>;
-  seeded?: Promise<void>;
-};
-const shared = globalThis as typeof globalThis & {
-  nannyDatabase?: DatabaseCache;
-};
-const cache = (shared.nannyDatabase ||= {});
 export async function connectDatabase() {
-  if (!process.env.MONGODB_URI)
-    throw new Error("MONGODB_URI is missing. Configure it in .env.");
-  cache.connection ||= mongoose
-    .connect(process.env.MONGODB_URI)
-    .catch((error) => {
-      cache.connection = undefined;
-      throw error;
-    });
-  await cache.connection;
-  cache.seeded ||= seedDatabase().catch((error) => {
-    cache.seeded = undefined;
-    throw error;
-  });
-  await cache.seeded;
+  assertAtlasUrl();
+  await prisma.$connect();
 }
 
 const starterServices = [
@@ -91,55 +70,30 @@ const starterServices = [
 ];
 
 export async function seedDatabase() {
-  if (!(await Service.countDocuments()))
-    await Service.insertMany(starterServices);
-  else {
-    // Add the Nanny catalogue without overwriting owner-edited services, and hide generic starter entries from the old demo.
-    await Service.updateMany(
-      {
-        name: {
-          $in: [
-            "Office Lunch Box",
-            "Celebration Buffet",
-            "Corporate Event Catering",
-            "Hospitality Service Team",
-            "Tea & Snack Break",
-            "Tables & Catering Equipment",
-          ],
-        },
-      },
-      { $set: { active: false } },
-    );
-    for (const item of starterServices) {
-      const { image, quoteOnly, price, ...insertFields } = item;
-      await Service.updateOne(
-        { name: item.name },
-        { $setOnInsert: insertFields, $set: { image, quoteOnly, price } },
-        { upsert: true },
-      );
-    }
+  await connectDatabase();
+  // Insert absent catalogue items; preserve all existing owner edits.
+  for (const service of starterServices) {
+    if (!(await prisma.service.findFirst({ where: { name: service.name } })))
+      await prisma.service.create({ data: service });
   }
-  const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || "";
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || "";
   if (
-    adminEmail &&
-    adminPassword &&
-    adminPassword !== "ChangeThisPassword123!"
+    email &&
+    password.length >= 12 &&
+    !["ChangeThisPassword123!", "ReplaceWithALongUniquePassword123!"].includes(
+      password,
+    )
   ) {
-    const exists = await User.findOne({ email: adminEmail });
-    if (!exists) {
-      const passwordHash = await bcrypt.hash(adminPassword, 12);
-      await User.create({
+    await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
         name: process.env.ADMIN_NAME || "Site Administrator",
-        email: adminEmail,
-        passwordHash,
+        passwordHash: await bcrypt.hash(password, 12),
         role: "admin",
-      });
-      console.log(`Admin account created for ${adminEmail}`);
-    }
-  } else {
-    console.warn(
-      "Admin account not seeded. Set a unique ADMIN_EMAIL and strong ADMIN_PASSWORD in .env before startup.",
-    );
+      },
+    });
   }
 }

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": false,
+    "incremental": false,
+    "outDir": ".seed-build"
+  },
+  "include": ["src/lib/db.ts", "src/lib/prisma.ts"],
+  "exclude": ["node_modules", ".next"]
+}

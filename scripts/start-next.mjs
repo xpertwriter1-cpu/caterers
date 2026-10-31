@@ -1,7 +1,9 @@
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
+const { loadEnvConfig } = nextEnv;
 import { spawn } from "node:child_process";
 
 const command = process.argv[2];
+process.env.NODE_ENV = command === "dev" ? "development" : "production";
 loadEnvConfig(process.cwd(), command === "dev");
 const child = spawn(
   process.execPath,

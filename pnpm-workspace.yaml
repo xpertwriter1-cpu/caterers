@@ -1,0 +1,9 @@
+packages:
+  - .
+storeDir: .pnpm-store
+verifyDepsBeforeRun: false
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  prisma: true
+  sharp: true

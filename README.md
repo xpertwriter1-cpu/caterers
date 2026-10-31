@@ -2,13 +2,15 @@
 
 A Next.js Pages Router application with strict TypeScript for the Nairobi-based Nanny Events & Caterers business. Branding uses forest green and gold. The website supports event quotation requests, traditional Kenyan menu enquiries, customer accounts, online food-order requests, an admin dashboard, WhatsApp contact links and an M-PESA payment preference field.
 
-## Next.js development
+## Next.js, Prisma and MongoDB Atlas
 
-The project uses Next.js 16, React 19 and strict TypeScript. All pages are React TSX components; there is no Express server or EJS runtime. Existing MongoDB collection names and record formats are preserved. Keep your existing .env; never put secrets in NEXT_PUBLIC_ variables.
+The project uses Next.js 16, React 19 and strict TypeScript. All pages are React TSX components; there is no Express server or EJS runtime. Prisma 6.19.3 connects to MongoDB Atlas using MONGODB_URI from .env. The Prisma schema maps to the existing collection names and record fields; no database reset or record copy is needed. Keep your existing .env; never put secrets in NEXT_PUBLIC_ variables.
 
 - src/pages: file-system routes, server-side page loaders and the Next API entry point.
 - src/components: React pages, shared navigation and notification controls.
-- src/lib/models.ts: typed Mongoose schemas for the existing collections.
+- prisma/schema.prisma: MongoDB models, embedded notification/order item types and existing collection mappings.
+- src/lib/prisma.ts: shared Prisma Client and Atlas URL validation.
+- src/lib/models.ts: generated Prisma type exports.
 - src/lib/controllers.ts: booking, enquiry, order, account and admin business handlers.
 - src/lib/next-handler.ts: Next request/response handling, raw webhook bodies and server-side props.
 - src/lib/session.ts: encrypted, HTTP-only cookie sessions with an eight-hour lifetime. Existing Express sessions are replaced, so sign in again after upgrading.
@@ -18,24 +20,52 @@ The project uses Next.js 16, React 19 and strict TypeScript. All pages are React
 Run these from PowerShell:
 
 ```powershell
-npm.cmd install
-npm.cmd run dev
+pnpm install
+pnpm dev
 ```
 
 The launcher reads PORT from .env (currently 3001). Keep a single app instance running on that port. The development server uses Webpack for consistent Windows support.
 
 ```powershell
-npm.cmd run typecheck
-npm.cmd test
-npm.cmd run build
-npm.cmd start
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm start
 ```
 
-Production requires a Node.js host with MongoDB connectivity; this app cannot be deployed as a static HTML export. Build before running start. Set NODE_ENV=production and serve over HTTPS so secure session cookies work.
+Production requires a Node.js host with MongoDB Atlas connectivity; this app cannot be deployed as a static HTML export. Build before running start. Set NODE_ENV=production and serve over HTTPS so secure session cookies work.
 
-Public page URLs are unchanged. Forms submit to /api paths, for example /api/contact, /api/book and /api/admin/login. /health and /payments/paystack/webhook retain their existing URLs through Next rewrites. Paystack return URLs still use /requests/:token/verify. API request bodies are limited to 100 KB; webhook HMAC verification uses the original bytes. Customer account queries exclude internal booking notes before serializing page props.
+Public page URLs are unchanged. Forms submit to /api paths, for example /api/contact, /api/book and /api/admin/login. /health and /payments/paystack/webhook retain their existing URLs through Next rewrites. Paystack return URLs still use /requests/:token/verify. API request bodies are limited to 100 KB; webhook HMAC verification uses the original bytes. Internal booking notes are stripped before customer data enters serialized page props. Quotation writes use atomic Prisma updateMany filters with the existing __v version and payment-reference lock.
 
 Tests compile TypeScript and use Node's built-in test runner. They mock MongoDB and external providers; no live email, WhatsApp message or payment is sent. Live provider delivery still requires your configured credentials and a separate end-to-end check.
+
+## Prisma and Atlas setup
+
+Use pnpm exclusively. The repository pins pnpm 12.11.2 and commits pnpm-lock.yaml. On Windows, pnpm.cmd can be used if PowerShell blocks the pnpm.ps1 shim.
+
+Keep your existing MONGODB_URI in .env. It must use the Atlas SRV format and name the same database as before:
+
+```dotenv
+MONGODB_URI=mongodb+srv://USER:URL_ENCODED_PASSWORD@CLUSTER.mongodb.net/nanny_events_caterers?retryWrites=true&w=majority
+```
+
+Do not replace real credentials with placeholders. Allow the hosting machine's IP in Atlas Network Access and use a database user with read/write access. Atlas supplies the replica set required by Prisma's MongoDB connector.
+
+```powershell
+pnpm install
+pnpm prisma:validate
+pnpm db:check
+# On first setup, ensure indexes and create missing catalogue/admin records:
+pnpm db:setup
+pnpm db:seed
+pnpm dev
+```
+
+Installation and builds generate Prisma Client automatically. After editing prisma/schema.prisma, run pnpm prisma:generate. Prisma 6.19 is used for its MongoDB connector; Prisma 7 does not support MongoDB. See the [Prisma MongoDB connector documentation](https://www.prisma.io/docs/orm/v6/overview/databases/mongodb).
+
+Prisma maps id to MongoDB _id and customerId to the existing customer ObjectId field. It reads users, services, bookings, orders and inquiries directly. Existing passwords remain bcrypt hashes. Optional order tokens and payment references keep the existing sparse unique indexes, configured by db:setup. Do not replace them with non-sparse unique indexes. db:setup only ensures these indexes; it never drops collections or rewrites records. Seeding inserts absent records without overwriting existing services or accounts.
+
+MongoDB does not use Prisma Migrate. Do not run migrate dev, migrate reset, or db push --force-reset against Atlas. This migration deliberately does not reset the database or run db push. /health returns the actual Prisma database ping status (503 if Atlas is unavailable). db:check is read-only and does not print credentials.
 
 ## Business photo gallery
 
@@ -69,18 +99,18 @@ Menu and event services are configured as quotation-led items. No prices are adv
 
    ```powershell
    Copy-Item .env.example .env
-   npm.cmd install
+   pnpm install
    ```
 
 6. Open `.env` and set `MONGODB_URI`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `ADMIN_NAME`. Use a unique admin email and a strong password of at least 12 characters. Never commit or share `.env`.
 7. Start the server:
 
    ```powershell
-   npm.cmd run dev
+   pnpm dev
    ```
 
 8. Open http://localhost:3001. Health check: http://localhost:3001/health.
-9. Sign in with the admin credentials you configured to open `/admin`. The admin account is created at startup if the email/password are configured and the account does not already exist.
+9. Sign in with the admin credentials you configured to open `/admin`. Run pnpm db:seed to create the configured admin if it does not already exist; existing accounts and catalogue edits are preserved.
 
 ## Booking approvals and email
 

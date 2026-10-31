@@ -42,7 +42,7 @@ export default function Order(data: PageData) {
             <form
               className="form-card compact-form"
               method="post"
-              action={`/api/order/${service._id}`}
+              action={`/api/order/${service.id}`}
             >
               <label>
                 Your name

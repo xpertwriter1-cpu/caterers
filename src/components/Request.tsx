@@ -11,7 +11,7 @@ export default function Request(data: PageData) {
         <div className="container booking-layout">
           <div className="booking-intro">
             <p className="eyebrow">YOUR FOOD &amp; CATERING REQUEST</p>
-            <h1>Order #{order._id.toString().slice(-6).toUpperCase()}</h1>
+            <h1>Order #{order.id.toString().slice(-6).toUpperCase()}</h1>
             <p>
               Keep this private link to check your quotation, payment and
               delivery. No account needed.

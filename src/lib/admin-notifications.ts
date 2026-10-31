@@ -64,7 +64,7 @@ export function createAdminNotifier({
             : kind === "inquiry"
               ? "Contact enquiry"
               : "Event quotation request",
-        "2": record._id.toString().slice(-6).toUpperCase(),
+        "2": record.id.toString().slice(-6).toUpperCase(),
         "3": summary.replace(/\s+/g, " ").trim().slice(0, 400) || "New request",
         "4": dashboard,
       }),

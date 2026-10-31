@@ -122,7 +122,7 @@ export async function dispatch(
     }
   } catch (error) {
     const duplicate =
-      error instanceof Error && "code" in error && error.code === 11000;
+      error instanceof Error && "code" in error && error.code === "P2002";
     outcome.status = duplicate ? 400 : 500;
     outcome.view = "error";
     // Never return database credentials, connection strings or provider secrets to clients.
@@ -222,7 +222,10 @@ export async function apiHandler(req: NextApiRequest, res: NextApiResponse) {
   }
   if (
     pathname === "/payments/paystack/webhook" &&
-    !createPayments().validSignature(rawBody, req.headers["x-paystack-signature"])
+    !createPayments().validSignature(
+      rawBody,
+      req.headers["x-paystack-signature"],
+    )
   ) {
     return res.status(401).end();
   }

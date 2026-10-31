@@ -109,7 +109,7 @@ export default function Admin(data: PageData) {
                       <td>
                         <form
                           method="post"
-                          action={`/api/admin/services/${s._id}/toggle`}
+                          action={`/api/admin/services/${s.id}/toggle`}
                         >
                           <button className="small-btn" type="submit">
                             {s.active ? "Hide" : "Activate"}
@@ -231,7 +231,7 @@ export default function Admin(data: PageData) {
                   <form
                     className="admin-inline-form"
                     method="post"
-                    action={`/api/admin/bookings/${b._id}`}
+                    action={`/api/admin/bookings/${b.id}`}
                   >
                     <label>
                       Status
@@ -357,7 +357,7 @@ export default function Admin(data: PageData) {
                     <div>
                       <span className="status">{o.status}</span>
                       <h3>
-                        Order #{o._id.toString().slice(-6).toUpperCase()} ·{" "}
+                        Order #{o.id.toString().slice(-6).toUpperCase()} ·{" "}
                         {currency(o.total)}
                       </h3>
                       <p>
@@ -383,7 +383,7 @@ export default function Admin(data: PageData) {
                   <form
                     className="admin-inline-form"
                     method="post"
-                    action={`/api/admin/orders/${o._id}`}
+                    action={`/api/admin/orders/${o.id}`}
                   >
                     <label>
                       Order status

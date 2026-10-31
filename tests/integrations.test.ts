@@ -22,7 +22,7 @@ const env: Environment = {
   PUBLIC_BASE_URL: "https://caterer.example.com",
 };
 const order: NotificationRecord = {
-  _id: "123456",
+  id: "123456",
   requesterName: "Guest",
   requesterEmail: "guest@example.com",
   phone: "0723548397",
@@ -61,7 +61,7 @@ test("orders, event bookings and contact enquiries send admin email and template
     },
   });
   const booking: NotificationRecord = {
-    _id: "123456",
+    id: "123456",
     requesterName: "Guest",
     requesterEmail: "guest@example.com",
     type: "Wedding",
@@ -70,7 +70,7 @@ test("orders, event bookings and contact enquiries send admin email and template
     venue: "Nairobi",
   };
   const inquiry: NotificationRecord = {
-    _id: "123456",
+    id: "123456",
     requesterName: "Guest",
     requesterEmail: "guest@example.com",
     subject: "Equipment hire",
@@ -122,7 +122,7 @@ test("email failure does not prevent WhatsApp; retry skips accepted channels", a
     },
   });
   const booking: NotificationRecord = {
-    _id: "123456",
+    id: "123456",
     type: "Wedding",
     guestCount: 100,
   };
@@ -187,7 +187,7 @@ test("booking decisions use requester email and exclude internal notes", async (
   const mailer = createBookingMailer(env);
   await mailer.send(
     {
-      _id: "123456",
+      id: "123456",
       type: "Wedding",
       eventDate: "2099-01-01",
       status: "Approved",
