@@ -1,2 +1,0 @@
-minimumReleaseAgeExclude:
-  - nodemailer@10.2.1

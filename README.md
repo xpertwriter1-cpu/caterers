@@ -1,12 +1,47 @@
-# Nanny Events & Caterers — Node.js Website
+# Nanny Events & Caterers - Next.js + TypeScript
 
-Responsive website starter for the Nairobi-based Nanny Events & Caterers business. Branding uses forest green and gold. The website supports event quotation requests, traditional Kenyan menu enquiries, customer accounts, online food-order requests, an admin dashboard, WhatsApp contact links and an M-PESA payment preference field.
+A Next.js Pages Router application with strict TypeScript for the Nairobi-based Nanny Events & Caterers business. Branding uses forest green and gold. The website supports event quotation requests, traditional Kenyan menu enquiries, customer accounts, online food-order requests, an admin dashboard, WhatsApp contact links and an M-PESA payment preference field.
+
+## Next.js development
+
+The project uses Next.js 16, React 19 and strict TypeScript. All pages are React TSX components; there is no Express server or EJS runtime. Existing MongoDB collection names and record formats are preserved. Keep your existing .env; never put secrets in NEXT_PUBLIC_ variables.
+
+- src/pages: file-system routes, server-side page loaders and the Next API entry point.
+- src/components: React pages, shared navigation and notification controls.
+- src/lib/models.ts: typed Mongoose schemas for the existing collections.
+- src/lib/controllers.ts: booking, enquiry, order, account and admin business handlers.
+- src/lib/next-handler.ts: Next request/response handling, raw webhook bodies and server-side props.
+- src/lib/session.ts: encrypted, HTTP-only cookie sessions with an eight-hour lifetime. Existing Express sessions are replaced, so sign in again after upgrading.
+- src/lib/admin-notifications.ts, booking-email.ts and payments.ts: server-only Twilio, SMTP and Paystack integrations.
+- public: original styles, logo, photos and videos.
+
+Run these from PowerShell:
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+The launcher reads PORT from .env (currently 3001). Keep a single app instance running on that port. The development server uses Webpack for consistent Windows support.
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+npm.cmd run build
+npm.cmd start
+```
+
+Production requires a Node.js host with MongoDB connectivity; this app cannot be deployed as a static HTML export. Build before running start. Set NODE_ENV=production and serve over HTTPS so secure session cookies work.
+
+Public page URLs are unchanged. Forms submit to /api paths, for example /api/contact, /api/book and /api/admin/login. /health and /payments/paystack/webhook retain their existing URLs through Next rewrites. Paystack return URLs still use /requests/:token/verify. API request bodies are limited to 100 KB; webhook HMAC verification uses the original bytes. Customer account queries exclude internal booking notes before serializing page props.
+
+Tests compile TypeScript and use Node's built-in test runner. They mock MongoDB and external providers; no live email, WhatsApp message or payment is sent. Live provider delivery still requires your configured credentials and a separate end-to-end check.
 
 ## Business photo gallery
 
-The October 29 media collection is shown in the homepage's **Fresh from our events** section (`/#event-gallery`): 23 full-size linked photos in `public/images/events` and six playable MP4 videos in `public/videos/events`. The seven supplied video files contained one byte-identical duplicate, which is included only once. Captions and media order are in `views/partials/event-gallery.ejs`. Photos load lazily; videos use native controls and preload only metadata. Deploy these asset folders alongside the updated views and stylesheet to make the collection available on the hosted website.
+The October 29 media collection is shown in the homepage's **Fresh from our events** section (`/#event-gallery`): 23 full-size linked photos in `public/images/events` and six playable MP4 videos in `public/videos/events`. The seven supplied video files contained one byte-identical duplicate, which is included only once. Captions and media order are in `src/components/EventGallery.tsx`. Photos load lazily; videos use native controls and preload only metadata. Deploy these asset folders alongside the React components and stylesheet to make the collection available on the hosted website.
 
-The `public/images` folder contains the photos supplied by Nanny Caterers. They are used across the homepage hero, a full photo gallery, menu/service cards and About page; service records seeded by the app point to the local photos. To change a photo, replace the matching file in `public/images` while keeping its filename, or update the image path in `server.js`.
+The `public/images` folder contains the photos supplied by Nanny Caterers. They are used across the homepage hero, a full photo gallery, menu/service cards and About page; service records seeded by the app point to the local photos. To change a photo, replace the matching file in `public/images` while keeping its filename, or update the image path in `src/lib/db.ts`.
 
 ## Important payment status
 
@@ -26,7 +61,7 @@ Menu and event services are configured as quotation-led items. No prices are adv
 
 ## Windows setup
 
-1. Install Node.js LTS (Node.js 20 or newer): https://nodejs.org/
+1. Install Node.js LTS (Node.js 20.9 or newer): https://nodejs.org/
 2. Create a MongoDB Atlas cluster and database user: https://cloud.mongodb.com/
 3. In Atlas, add your current IP address to Network Access and copy the Node.js driver connection string. Replace the username/password placeholders and URL-encode special characters in the password.
 4. Extract this ZIP to a folder such as `C:\Projects\nanny-events-caterers`.
@@ -34,17 +69,17 @@ Menu and event services are configured as quotation-led items. No prices are adv
 
    ```powershell
    Copy-Item .env.example .env
-   npm install
+   npm.cmd install
    ```
 
 6. Open `.env` and set `MONGODB_URI`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `ADMIN_NAME`. Use a unique admin email and a strong password of at least 12 characters. Never commit or share `.env`.
 7. Start the server:
 
    ```powershell
-   npm run dev
+   npm.cmd run dev
    ```
 
-8. Open http://localhost:3000. Health check: http://localhost:3000/health.
+8. Open http://localhost:3001. Health check: http://localhost:3001/health.
 9. Sign in with the admin credentials you configured to open `/admin`. The admin account is created at startup if the email/password are configured and the account does not already exist.
 
 ## Booking approvals and email
@@ -88,7 +123,7 @@ To enable sending, add the `SMTP_*` settings from `.env.example` to your `.env` 
 ## Before production launch
 
 - Configure and verify booking email delivery; verify order quotation and update emails.
-- Implement and test Safaricom Daraja M-PESA STK Push and secure payment callbacks before claiming payments are live.
+- Configure and test Paystack Kenya card/mobile money checkout and the signed webhook before accepting live payments.
 - Add CSRF protection, rate limiting, input validation, monitoring, backups and a privacy notice.
 - Review the admin access, session cookie and Content Security Policy settings for your hosting environment.
 - Confirm business address, email, exact service area, food safety/allergen disclosures, cancellation policy and delivery fees.
