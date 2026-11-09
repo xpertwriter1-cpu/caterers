@@ -41,7 +41,7 @@ const starterServices = [
     name: "Corporate & Conference Catering",
     category: "Event Catering",
     description:
-      "Food and hospitality support for corporate functions, workshops, meetings and conferences in Nairobi and surrounding areas, subject to availability.",
+      "Food and hospitality support for corporate functions, workshops, meetings and conferences. Service area and availability are confirmed on request.",
     price: 0,
     quoteOnly: true,
     unit: "custom quotation",

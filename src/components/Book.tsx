@@ -7,16 +7,17 @@ export default function Book(data: PageData) {
     <>
       <section className="page-hero">
         <div className="container">
-          <p className="eyebrow eyebrow-light">EVENTS & CATERING</p>
+          <p className="eyebrow eyebrow-light">REQUEST A CATERING QUOTATION</p>
           <h1>
-            Tell us what you're
+            Let’s make your event
             <br />
-            <em>bringing people together for.</em>
+            <em>special.</em>
           </h1>
           <p>
-            Share your event date, venue, guest count and menu preferences. Our
-            team will review the request and contact you to discuss availability
-            and a quotation.
+            Planning an event? We would love to be part of your special
+            occasion. Share a few details with us, and our team will get in
+            touch to discuss your catering requirements and prepare a
+            customised quotation.
           </p>
         </div>
       </section>
@@ -26,13 +27,13 @@ export default function Book(data: PageData) {
             <p className="eyebrow">LET'S PLAN</p>
             <h2>Made for your occasion.</h2>
             <p>
-              From corporate catering to weddings, ruracio and dowry ceremonies,
-              tell us what you have in mind.
+              Our promise: We will work with your needs and budget to recommend
+              a suitable catering package.
             </p>
             <ul className="check-list">
               <li>Choose your event date and guest count</li>
               <li>Tell us the venue and preferred Kenyan dishes</li>
-              <li>Share a target budget if you have one</li>
+              <li>Share your budget per person or total budget</li>
               <li>Receive booking decisions and comments by email</li>
             </ul>
             <div className="notice">
@@ -51,7 +52,7 @@ export default function Book(data: PageData) {
           >
             <h2>Event request</h2>
             <label>
-              Your name
+              Full name
               <input
                 name="requesterName"
                 required
@@ -62,7 +63,18 @@ export default function Book(data: PageData) {
               />
             </label>
             <label>
-              Requester email (Gmail or another provider)
+              Phone number
+              <input
+                type="tel"
+                name="phone"
+                required
+                maxLength={30}
+                autoComplete="tel"
+                placeholder="e.g. 0723 548 397"
+              />
+            </label>
+            <label>
+              Email address
               <input
                 type="email"
                 name="requesterEmail"
@@ -79,7 +91,7 @@ export default function Book(data: PageData) {
             </label>
             <div className="form-two">
               <label>
-                Event type
+                Type of event
                 <select name="type" required>
                   <option value="">Select event</option>
                   <option>Wedding</option>
@@ -108,7 +120,7 @@ export default function Book(data: PageData) {
             </div>
             <div className="form-two">
               <label>
-                Estimated guests
+                Estimated number of guests
                 <input
                   type="number"
                   name="guestCount"
@@ -127,10 +139,14 @@ export default function Book(data: PageData) {
                   step="100"
                   placeholder="e.g. 100000"
                 />
+                <span className="form-note">
+                  Per person or total budget. Tell us which under additional
+                  requirements.
+                </span>
               </label>
             </div>
             <label>
-              Venue / delivery location
+              Event location
               <input
                 name="venue"
                 required
@@ -139,7 +155,7 @@ export default function Book(data: PageData) {
               />
             </label>
             <label>
-              Menu and service requirements
+              Preferred menu or type of food
               <textarea
                 name="menuNeeds"
                 rows={4}
@@ -148,7 +164,7 @@ export default function Book(data: PageData) {
               ></textarea>
             </label>
             <label>
-              Additional notes
+              Additional requirements
               <textarea
                 name="notes"
                 rows={3}
@@ -160,15 +176,16 @@ export default function Book(data: PageData) {
               Submit event request ↗
             </button>
             <p className="form-note">
-              No account needed. Our team will reply to the email address you
-              provide.
+              No account needed. Our team will contact you using the details
+              provided. Submitting this form is a request, not a confirmed
+              booking.
             </p>
           </form>
         </div>
       </section>
       <div className="container whatsapp-booking">
         <p>
-          Prefer WhatsApp?{" "}
+          Contact us today and let us take care of the food! Prefer WhatsApp?{" "}
           <a
             href="https://wa.me/254723548397?text=Hello%20Nanny%20Events%20%26%20Caterers%2C%20I%27d%20like%20to%20request%20an%20event%20quotation."
             target="_blank"

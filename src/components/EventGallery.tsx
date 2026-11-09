@@ -67,7 +67,7 @@ export default function EventGallery() {
         <div className="container">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">FOOD, FRUIT &amp; HOSPITALITY</p>
+              <p className="eyebrow">OUR WORK / GALLERY</p>
               <h2 id="event-gallery-heading">Fresh from our events.</h2>
               <p className="gallery-intro">
                 Explore our buffet dishes, fruit displays, refreshments and

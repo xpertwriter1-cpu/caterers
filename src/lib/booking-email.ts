@@ -163,6 +163,7 @@ export function createBookingMailer(env: Environment = process.env) {
           `New booking #${reference}`,
           `Requester: ${booking.requesterName}`,
           `Email: ${booking.requesterEmail}`,
+          `Phone: ${booking.phone || "Not provided"}`,
           `Event: ${booking.type}`,
           `Date: ${new Date(booking.eventDate!).toLocaleDateString("en-KE", { timeZone: "Africa/Nairobi" })}`,
           `Guests: ${booking.guestCount}`,

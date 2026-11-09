@@ -93,7 +93,7 @@ app.get("/", async (_req, res) => {
     take: 6,
   });
   res.render("home", {
-    title: "Nairobi Catering, Events & Hospitality",
+    title: "Nanny Events and Caterers | Catering and Events",
     services,
   });
 });
@@ -263,7 +263,8 @@ app.get("/book", (_req, res) =>
 app.post("/book", async (req, res) => {
   const { type, eventDate, venue, menuNeeds, notes } = req.body;
   const requesterName = (req.body.requesterName || "").trim(),
-    requesterEmail = (req.body.requesterEmail || "").trim().toLowerCase();
+    requesterEmail = (req.body.requesterEmail || "").trim().toLowerCase(),
+    phone = (req.body.phone || "").trim();
   const guestCount = Number(req.body.guestCount),
     date = new Date(eventDate),
     budget = req.body.budget ? Number(req.body.budget) : undefined;
@@ -271,6 +272,8 @@ app.post("/book", async (req, res) => {
     !requesterName ||
     requesterName.length > 100 ||
     !isEmail(requesterEmail) ||
+    !phone ||
+    phone.length > 30 ||
     !type ||
     type.length > 100 ||
     !eventDate ||
@@ -297,6 +300,7 @@ app.post("/book", async (req, res) => {
       customerId: req.session.user?.id,
       requesterName,
       requesterEmail,
+      phone,
       type,
       eventDate: date,
       guestCount,

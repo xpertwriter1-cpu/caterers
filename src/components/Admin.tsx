@@ -225,6 +225,7 @@ export default function Admin(data: PageData) {
                         {b.requesterEmail ||
                           (b.customer ? b.customer.email : "")}
                       </p>
+                      {b.phone ? <p>Phone: {b.phone}</p> : null}
                     </div>
                     <div className="record-date">
                       {new Date(b.eventDate).toLocaleDateString("en-KE", {

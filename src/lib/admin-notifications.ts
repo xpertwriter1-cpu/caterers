@@ -49,7 +49,7 @@ export function createAdminNotifier({
             .join(", ")
         : kind === "inquiry"
           ? `${record.requesterName}: ${record.subject || "General enquiry"}. ${record.message}`
-          : `${record.type}, ${record.guestCount} guests`;
+          : `${record.type}, ${record.guestCount} guests, ${record.phone || "phone not provided"}`;
     const body = new URLSearchParams({
       From: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
       To: `whatsapp:${env.ADMIN_WHATSAPP_NUMBER}`,

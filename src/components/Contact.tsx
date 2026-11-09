@@ -1,5 +1,3 @@
-import { type PageData } from "../lib/types";
-
 export default function Contact() {
   return (
     <>
@@ -11,14 +9,18 @@ export default function Contact() {
             <br />
             <em>what you're planning.</em>
           </h1>
-          <p>Tell us about your occasion, order or hospitality request.</p>
+          <p>
+            We would be delighted to hear from you. Whether you are planning a
+            wedding, corporate function, ruracio or private celebration, Nanny
+            Events and Caterers is ready to serve you.
+          </p>
         </div>
       </section>
       <section className="section section-warm">
         <div className="container contact-layout">
           <div className="contact-copy">
             <p className="eyebrow">WE'RE HERE TO HELP</p>
-            <h2>Every good event starts with a conversation.</h2>
+            <h2>Let’s talk about your next event.</h2>
             <p>
               Send us a message and include any details that will help us
               understand your request.
@@ -27,7 +29,11 @@ export default function Contact() {
               <span>✉</span>
               <div>
                 <strong>Email</strong>
-                <p>Please contact us by phone or WhatsApp.</p>
+                <p>
+                  <a href="mailto:nannycaterers@gmail.com">
+                    nannycaterers@gmail.com
+                  </a>
+                </p>
               </div>
             </div>
             <div className="contact-detail">
@@ -35,8 +41,7 @@ export default function Contact() {
               <div>
                 <strong>Phone / WhatsApp</strong>
                 <p>
-                  <a href="tel:+254723548397">0723 548 397</a> /{" "}
-                  <a href="tel:+254733548397">0733 548 397</a>
+                  <a href="tel:+254723548397">0723 548 397</a>
                 </p>
                 <p>
                   <a
@@ -54,8 +59,8 @@ export default function Contact() {
               <div>
                 <strong>Service area</strong>
                 <p>
-                  Nairobi and surrounding areas; ask us about your venue or
-                  delivery location.
+                  Kenyatta Road, Kenya. Ask us about your venue or delivery
+                  location.
                 </p>
               </div>
             </div>
@@ -104,6 +109,7 @@ export default function Contact() {
         </div>
       </section>
       <div className="container social-links">
+        <p className="eyebrow">CONNECT WITH US</p>
         <a
           className="btn btn-dark"
           href="https://www.facebook.com/NannyCaterersServices/"
@@ -119,7 +125,8 @@ export default function Contact() {
           rel="noopener"
         >
           Instagram ↗
-        </a>
+        </a>{" "}
+        <span className="social-name">TikTok: Nanny Events and Caterers</span>
       </div>
     </>
   );

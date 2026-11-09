@@ -76,8 +76,8 @@ export function Layout({
             ) : (
               <>
                 <a href="/login">Sign in</a>
-                <a className="nav-cta" href="/register">
-                  Get Started
+                <a className="nav-cta" href="/book">
+                  Request a Quote
                 </a>
               </>
             )}
@@ -105,9 +105,9 @@ export function Layout({
               {logo}
             </a>
             <p>
-              Traditional Kenyan flavours, thoughtful catering and event
-              planning for weddings, dowry ceremonies, corporate functions and
-              private celebrations.
+              Good food, generous portions and professional catering for
+              weddings, ruracio ceremonies, corporate functions and private
+              celebrations.
             </p>
           </div>
           <div>
@@ -119,13 +119,17 @@ export function Layout({
           <div>
             <h3>Plan with us</h3>
             <p>
-              Weddings · Dowry ceremonies · Corporate events · Private
-              celebrations · Food delivery
+              Weddings · Ruracio ceremonies · Corporate events · Private
+              celebrations · Traditional Kenyan cuisine
             </p>
             <p>
               <a href="tel:+254723548397">0723 548 397</a>
               <br />
-              <a href="tel:+254733548397">0733 548 397</a>
+              <a href="mailto:nannycaterers@gmail.com">
+                nannycaterers@gmail.com
+              </a>
+              <br />
+              Kenyatta Road, Kenya
             </p>
             <a
               href="https://www.facebook.com/NannyCaterersServices/"
@@ -141,11 +145,14 @@ export function Layout({
             >
               Instagram
             </a>
+            <span className="footer-social-name">
+              TikTok: Nanny Events and Caterers
+            </span>
           </div>
         </div>
         <div className="container footer-bottom">
-          © {year} Nanny Events &amp; Caterers. All rights reserved. · Nairobi,
-          Kenya
+          © {year} Nanny Events &amp; Caterers. All rights reserved. ·
+          Kenyatta Road, Kenya
         </div>
       </footer>
     </>

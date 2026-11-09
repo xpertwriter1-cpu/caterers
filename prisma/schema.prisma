@@ -64,6 +64,7 @@ model Booking {
   customer                   User?              @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   requesterName              String?
   requesterEmail             String?
+  phone                      String?
   type                       String
   eventDate                  DateTime
   guestCount                 Int
