@@ -115,7 +115,8 @@ export interface PageData {
   verificationEmail?: string;
   stats: { bookingCount: number; orderCount: number; paidTotal: number };
   selectedCategory: string;
-  mode: "login" | "register" | "verify";
+  mode: "login" | "register" | "verify" | "forgot" | "reset";
+  resetToken?: string;
   paymentsConfigured: boolean;
   message: string;
 }

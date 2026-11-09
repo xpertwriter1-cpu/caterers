@@ -47,6 +47,18 @@ export function createBookingMailer(env: Environment = process.env) {
       });
       if (!result.accepted?.length) throw new Error("Verification email was not accepted.");
     },
+    async sendPasswordReset(recipient: string, token: string) {
+      if (!transport || !isEmail(recipient)) throw new Error("Password reset email is not configured.");
+      // Built from configuration, never the request's Host header, so a forged header cannot redirect the link.
+      const base = (env.PUBLIC_BASE_URL || "https://www.nannycaterers.co.ke").replace(/\/$/, "");
+      const result = await transport.sendMail({
+        from: { name: "Nanny Events & Caterers", address: env.SMTP_FROM || env.SMTP_USER },
+        to: { address: recipient },
+        subject: "Reset your Nanny Events & Caterers password",
+        text: `We received a request to reset your password.\n\nOpen this link to choose a new one:\n${base}/reset-password?token=${token}\n\nThe link expires in 30 minutes and can only be used once.\nIf you did not request this, ignore this email and your password will stay the same.`,
+      });
+      if (!result.accepted?.length) throw new Error("Password reset email was not accepted.");
+    },
     async notifyInquiry(inquiry: NotificationRecord) {
       const recipients = adminEmails(env);
       if (!transport || !recipients.length)

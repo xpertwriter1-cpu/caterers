@@ -221,6 +221,72 @@ app.post("/verify-email", async (req, res) => {
   flash(req, "success", "Email verified. Please sign in.");
   res.redirect("/login");
 });
+const hashResetToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
+async function sendPasswordReset(user: { id: string; email: string }) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const now = new Date();
+  const claimed = await dependencies.db.user.updateMany({
+    where: { id: user.id, OR: [
+      { passwordResetSentAt: null }, { passwordResetSentAt: { isSet: false } },
+      { passwordResetSentAt: { lte: new Date(now.getTime() - 60000) } },
+    ] },
+    data: { passwordResetTokenHash: hashResetToken(token), passwordResetExpiresAt: new Date(now.getTime() + 30 * 60000), passwordResetSentAt: now },
+  });
+  if (!claimed.count) return;
+  try {
+    await bookingMailer.sendPasswordReset(user.email, token);
+  } catch (error) {
+    // Allow an immediate retry after a provider failure.
+    await dependencies.db.user.updateMany({ where: { id: user.id, passwordResetSentAt: now }, data: { passwordResetTokenHash: null, passwordResetExpiresAt: null, passwordResetSentAt: null } });
+    throw error;
+  }
+}
+app.get("/forgot-password", (_req, res) =>
+  res.render("auth", { title: "Forgot your password?", mode: "forgot" }),
+);
+app.post("/forgot-password", async (req, res) => {
+  const email = (req.body.email || "").trim().toLowerCase();
+  const user = isEmail(email) ? await dependencies.db.user.findUnique({ where: { email } }) : null;
+  if (user) {
+    try {
+      await sendPasswordReset(user);
+    } catch (error) {
+      console.error("Password reset email failed:", error instanceof Error ? error.name : "Unknown error");
+    }
+  }
+  // The same reply for every address, so this form cannot reveal who has an account.
+  flash(req, "success", "If an account exists for that email, we have sent a password reset link. It expires in 30 minutes.");
+  res.redirect("/forgot-password");
+});
+app.get("/reset-password", (req, res) =>
+  res.render("auth", { title: "Choose a new password", mode: "reset", resetToken: /^[a-f0-9]{64}$/.test(req.query.token || "") ? req.query.token : "" }),
+);
+app.post("/reset-password", async (req, res) => {
+  const token = req.body.token || "";
+  const password = req.body.password || "";
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    flash(req, "danger", "That reset link is invalid or has expired. Please request a new one.");
+    return res.redirect("/forgot-password");
+  }
+  if (password.length < 10 || password.length > 128 || password !== req.body.confirmPassword) {
+    flash(req, "danger", "Enter the same password twice, using 10 to 128 characters.");
+    return res.redirect("/reset-password?token=" + token);
+  }
+  const now = new Date();
+  // One atomic write, so a link can only ever be used once.
+  const changed = await dependencies.db.user.updateMany({
+    where: { passwordResetTokenHash: hashResetToken(token), passwordResetExpiresAt: { gt: now } },
+    // Opening the emailed link proves the person controls this inbox.
+    data: { passwordHash: await bcrypt.hash(password, 12), emailVerifiedAt: now, passwordResetTokenHash: null, passwordResetExpiresAt: null, passwordResetSentAt: null },
+  });
+  if (!changed.count) {
+    flash(req, "danger", "That reset link is invalid or has expired. Please request a new one.");
+    return res.redirect("/forgot-password");
+  }
+  req.session.regenerate(() => {});
+  flash(req, "success", "Your password has been changed. Please sign in.");
+  res.redirect("/login");
+});
 app.get("/login", (_req, res) =>
   res.render("auth", { title: "Sign In", mode: "login" }),
 );

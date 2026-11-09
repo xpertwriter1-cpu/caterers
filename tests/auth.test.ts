@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, test, mock } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import { app, dependencies, bookingMailer } from "../src/lib/controllers";
 import { adminEmails, userRole } from "../src/lib/admin-access";
@@ -102,6 +103,68 @@ test("wrong, expired, exhausted and already used codes cannot verify", async () 
     assert.match(result.redirect, /^\/verify-email/);
     assert.equal(result.req.session.user, undefined);
   }
+  assert.equal(writes.mock.callCount(), 1);
+});
+
+test("forgot password emails a one-time token, stores only its hash and reveals nothing", async () => {
+  const find = mock.method(dependencies.db.user, "findUnique", async () => baseUser);
+  let stored: Record<string, unknown> = {};
+  mock.method(dependencies.db.user, "updateMany", async ({ data }: { data: Record<string, unknown> }) => { stored = data; return { count: 1 }; });
+  let delivered = "";
+  const mail = mock.method(bookingMailer, "sendPasswordReset", async (email: string, token: string) => { assert.equal(email, baseUser.email); delivered = token; });
+  const known = await request("/forgot-password", { email: ` ${baseUser.email.toUpperCase()} ` });
+  assert.match(delivered, /^[a-f0-9]{64}$/);
+  assert.notEqual(stored.passwordResetTokenHash, delivered);
+  assert.equal(stored.passwordResetTokenHash, crypto.createHash("sha256").update(delivered).digest("hex"));
+  assert.ok((stored.passwordResetExpiresAt as Date).getTime() <= Date.now() + 30 * 60000);
+  find.mock.mockImplementation(async () => null as never);
+  const unknown = await request("/forgot-password", { email: "nobody@example.com" });
+  assert.equal(mail.mock.callCount(), 1);
+  assert.equal(unknown.redirect, known.redirect);
+  assert.deepEqual(unknown.req.session.flash, known.req.session.flash);
+});
+
+test("forgot password is limited to one email a minute and hides delivery failures", async () => {
+  mock.method(dependencies.db.user, "findUnique", async () => baseUser);
+  const writes = mock.method(dependencies.db.user, "updateMany", async () => ({ count: 0 }));
+  const mail = mock.method(bookingMailer, "sendPasswordReset", async () => {});
+  await request("/forgot-password", { email: baseUser.email });
+  assert.equal(mail.mock.callCount(), 0);
+  writes.mock.mockImplementation(async () => ({ count: 1 }));
+  mail.mock.mockImplementation(async () => { throw new Error("SMTP down"); });
+  const quietLog = mock.method(console, "error", () => {});
+  const failed = await request("/forgot-password", { email: baseUser.email });
+  assert.equal(failed.redirect, "/forgot-password");
+  assert.equal(quietLog.mock.callCount(), 1);
+  assert.equal(writes.mock.calls.at(-1)!.arguments[0]!.data!.passwordResetTokenHash, null);
+});
+
+test("a valid reset link changes the password once and does not sign in", async () => {
+  const token = "a".repeat(64);
+  const writes = mock.method(dependencies.db.user, "updateMany", async () => ({ count: 1 }));
+  const result = await request("/reset-password", { token, password: "BrandNewPassword1!", confirmPassword: "BrandNewPassword1!" });
+  assert.equal(result.redirect, "/login");
+  assert.equal(result.req.session.user, undefined);
+  const { where, data } = writes.mock.calls[0].arguments[0]!;
+  assert.equal(where!.passwordResetTokenHash, crypto.createHash("sha256").update(token).digest("hex"));
+  assert.ok((where!.passwordResetExpiresAt as { gt: Date }).gt instanceof Date);
+  assert.ok(await bcrypt.compare("BrandNewPassword1!", String(data!.passwordHash)));
+  assert.equal(data!.passwordResetTokenHash, null);
+  assert.ok(data!.emailVerifiedAt instanceof Date);
+});
+
+test("expired, used, malformed and mismatched resets change nothing", async () => {
+  const token = "b".repeat(64);
+  const writes = mock.method(dependencies.db.user, "updateMany", async () => ({ count: 0 }));
+  const used = await request("/reset-password", { token, password: "BrandNewPassword1!", confirmPassword: "BrandNewPassword1!" });
+  assert.equal(used.redirect, "/forgot-password");
+  assert.equal(writes.mock.callCount(), 1);
+  const malformed = await request("/reset-password", { token: "not-a-token", password: "BrandNewPassword1!", confirmPassword: "BrandNewPassword1!" });
+  assert.equal(malformed.redirect, "/forgot-password");
+  const mismatch = await request("/reset-password", { token, password: "BrandNewPassword1!", confirmPassword: "SomethingElse12345" });
+  assert.equal(mismatch.redirect, `/reset-password?token=${token}`);
+  const short = await request("/reset-password", { token, password: "short", confirmPassword: "short" });
+  assert.equal(short.redirect, `/reset-password?token=${token}`);
   assert.equal(writes.mock.callCount(), 1);
 });
 

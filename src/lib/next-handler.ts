@@ -119,6 +119,8 @@ export async function dispatch(
           "/login",
           "/register",
           "/verify-email",
+          "/forgot-password",
+          "/reset-password",
           "/admin/login",
           "/logout",
           "/health",
@@ -175,7 +177,7 @@ export async function dispatch(
     ...JSON.parse(JSON.stringify(outcome.data || {})),
   };
   res.setHeader("Cache-Control", "private, no-store");
-  if (pathname.startsWith("/requests/"))
+  if (pathname.startsWith("/requests/") || pathname === "/reset-password")
     res.setHeader("Referrer-Policy", "no-referrer");
   return { outcome, page };
 }

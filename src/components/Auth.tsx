@@ -21,6 +21,42 @@ export default function Auth(data: PageData) {
     </section>
   );
 
+  if (mode === "forgot") return (
+    <section className="section section-warm">
+      <div className="container auth-form-wrap">
+        <h1>Forgot your password?</h1>
+        <p>Enter your account email and we will send you a link to choose a new password. The link expires in 30 minutes.</p>
+        <form className="auth-form" method="post" action="/api/forgot-password">
+          <label htmlFor="forgot-email">Email address</label>
+          <input id="forgot-email" name="email" type="email" autoComplete="email" required maxLength={254} />
+          <button className="btn btn-dark" type="submit">Send reset link</button>
+        </form>
+        <p>Remembered it? <a href="/login">Sign in</a>.</p>
+      </div>
+    </section>
+  );
+
+  if (mode === "reset") return (
+    <section className="section section-warm">
+      <div className="container auth-form-wrap">
+        <h1>Choose a new password.</h1>
+        {data.resetToken ? (
+          <form className="auth-form" method="post" action="/api/reset-password">
+            <input type="hidden" name="token" value={data.resetToken} />
+            <label htmlFor="reset-password">New password</label>
+            <input id="reset-password" name="password" type="password" autoComplete="new-password" required minLength={10} maxLength={128} />
+            <label htmlFor="reset-confirm">Confirm new password</label>
+            <input id="reset-confirm" name="confirmPassword" type="password" autoComplete="new-password" required minLength={10} maxLength={128} />
+            <p className="auth-hint">Use at least 10 characters.</p>
+            <button className="btn btn-dark" type="submit">Change password</button>
+          </form>
+        ) : (
+          <p>This reset link is not valid. <a href="/forgot-password">Request a new one</a>.</p>
+        )}
+      </div>
+    </section>
+  );
+
   return (
     <>
       <section className="auth-section">
@@ -123,7 +159,11 @@ export default function Auth(data: PageData) {
                       Use at least 10 characters.
                     </p>
                   </>
-                ) : null}
+                ) : (
+                  <p className="auth-hint">
+                    <a href="/forgot-password">Forgot your password?</a>
+                  </p>
+                )}
               </div>
               <button className="btn btn-dark btn-full" type="submit">
                 {mode === "register" ? "Create account" : "Sign in"}{" "}
