@@ -493,6 +493,11 @@ select:focus-visible {
   }
 }
 
+.social-links a.btn-dark,
+.social-links a.btn-dark:hover {
+  color: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,
